@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from app.schemas.task import TaskSyncResponse, TaskList
 from app.services.task import sync_tasks, get_tasks
 from app.external.unolo_client import UnoloClientError
-from app.middleware.auth import get_any_authenticated_user
+from app.middleware.auth import get_any_authenticated_user, get_manager_or_admin
 
 router = APIRouter()
 
@@ -19,7 +19,7 @@ async def sync_tasks_endpoint(
     start: date = Query(..., description="Start date (YYYY-MM-DD)"),
     end: date = Query(..., description="End date (YYYY-MM-DD)"),
     custom_task_name: str = Query(..., alias="customTaskName", description="Task name to fetch"),
-    current_user = Depends(get_any_authenticated_user)
+    current_user = Depends(get_manager_or_admin)
 ):
     """
     Trigger sync of tasks from Unolo API.

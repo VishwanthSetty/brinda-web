@@ -21,7 +21,7 @@ from app.schemas.client import (
 from app.services.client import get_clients
 from app.repository.employee_repository import employee_repository
 
-from app.middleware.auth import get_any_authenticated_user, get_admin_user
+from app.middleware.auth import get_any_authenticated_user, get_admin_user, get_manager_or_admin
 
 router = APIRouter()
 
@@ -204,11 +204,13 @@ async def migrate_clients(
 
 from app.external.unolo_client import get_unolo_client, UnoloClient
 
+
+
 @router.post("/sync", response_model=ClientMigrationResponse)
 async def sync_clients(
     db: AsyncIOMotorDatabase = Depends(get_database),
     unolo_client: UnoloClient = Depends(get_unolo_client),
-    current_user = Depends(get_any_authenticated_user),
+    current_user = Depends(get_manager_or_admin),
 ):
     """
     Sync clients from Unolo External API.

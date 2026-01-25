@@ -255,15 +255,17 @@ export default function DashboardLayout() {
                         })()}
                     </h1>
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                        <Button
-                            onClick={handleSyncUnolo}
-                            loading={isSyncing}
-                            size="sm"
-                            variant="light"
-                            color="blue"
-                        >
-                            {isSyncing ? syncStatus : 'Sync Unolo'}
-                        </Button>
+                        {(user?.role === 'admin' || user?.role === 'manager') && (
+                            <Button
+                                onClick={handleSyncUnolo}
+                                loading={isSyncing}
+                                size="sm"
+                                variant="light"
+                                color="blue"
+                            >
+                                {isSyncing ? syncStatus : 'Sync Unolo'}
+                            </Button>
+                        )}
                         <Link to="/" className="back-link">
                             ← Back to Website
                         </Link>
