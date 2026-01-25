@@ -1,0 +1,101 @@
+# ================================
+# Docker Compose - Development
+# ================================
+# Usage: docker-compose -f infra/docker-compose.dev.yml up
+
+version: "3.8"
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:8
+    container_name: brinda-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: brinda_web
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  # FastAPI Backend
+  api:
+    build:
+      context: ..
+      dockerfile: docker/api/Dockerfile
+    container_name: brinda-api
+    restart: unless-stopped
+    environment:
+      MONGODB_URL: mongodb://admin:password@mongodb:27017/brinda_web?authSource=admin
+      DATABASE_NAME: brinda_web
+      JWT_SECRET: dev-secret-key-change-in-production
+      JWT_ALGORITHM: HS256
+      JWT_EXPIRE_MINUTES: 30
+      ENVIRONMENT: development
+      DEBUG: "true"
+      ALLOWED_ORIGINS: http://localhost:5173,http://localhost:3000,http://localhost
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../apps/api:/app:cached
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # React Frontend (Vite Dev Server)
+  web:
+    image: node:20-alpine
+    container_name: brinda-web
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      VITE_API_URL: /api
+      VITE_APP_NAME: Brinda Publications
+      VITE_API_TARGET: http://api:8000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../apps/web:/app:cached
+      - /app/node_modules
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:5173 || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx Reverse Proxy (Optional for dev)
+  nginx:
+    image: nginx:alpine
+    container_name: brinda-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ../docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+      - web
+    profiles:
+      - full # Only run when using --profile full
+
+volumes:
+  mongodb_data:
+
+
+networks:
+  default:
+    name: brinda-network

@@ -1,0 +1,34 @@
+1. ID
+2. Client Name (*)
+3. Visible To (*)
+4. Contact Name (*)
+5. Country Code (*)
+6. Contact Number (*)
+7. Address (*)
+8. Can exec change location (*)
+9. Latitude
+10. Longitude
+11. Radius(m)
+12. Otp Verified
+13. Created By
+14. Created At
+15. Last Modified At
+16. Client Catagory (*)
+17. Division Name old
+18. Division Name new (*)
+19. Correspondent Name
+20. Corresponded Phone Number
+21. Head Master
+22. HM Phone Number
+23. Distributor Name
+24. Using Material (*)
+25. Currently Used Brand
+26. Time of Order(Class 10)
+27. Time of Order(Class 6-9)
+28. School Strength
+29. Using IIT (*)
+30. Using AI (*)
+31. Question Papers
+32. Branches Places
+33. Building
+34. To Delete

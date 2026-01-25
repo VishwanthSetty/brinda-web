@@ -1,0 +1,35 @@
+{
+  "name": "brinda-web",
+  "version": "1.0.0",
+  "description": "Book Publications Web Portal - Monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=apps/web",
+    "dev:api": "cd apps/api && uvicorn app.main:app --reload --port 8000",
+    "dev:all": "concurrently \"npm run dev:api\" \"npm run dev\"",
+    "build": "npm run build --workspace=apps/web",
+    "lint": "npm run lint --workspace=apps/web",
+    "preview": "npm run preview --workspace=apps/web"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "book-publications",
+    "dashboard",
+    "react",
+    "fastapi",
+    "mongodb"
+  ],
+  "author": "Brinda Publications",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@tanstack/react-table": "^8.21.3"
+  }
+}

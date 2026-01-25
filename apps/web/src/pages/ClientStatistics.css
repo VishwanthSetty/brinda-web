@@ -1,0 +1,290 @@
+/* Client Statistics Page Styles */
+
+.client-statistics-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xl);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--space-lg);
+}
+
+.stat-card {
+    background: var(--color-bg-primary);
+    padding: var(--space-xl);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-bg-tertiary);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    box-shadow: var(--shadow-sm);
+}
+
+.stat-label {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    font-weight: 500;
+}
+
+.stat-value {
+    font-size: var(--font-size-3xl);
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.stat-card.primary .stat-value {
+    color: var(--color-primary);
+}
+
+.stat-card.success .stat-value {
+    color: var(--color-success);
+}
+
+.data-table-container {
+    background: var(--color-bg-primary);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-bg-tertiary);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.table-header-controls {
+    padding: var(--space-lg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--color-bg-tertiary);
+    gap: var(--space-md);
+    flex-wrap: wrap;
+}
+
+.search-input {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--color-bg-tertiary);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-secondary);
+    color: var(--color-text);
+    min-width: 300px;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--font-size-sm);
+}
+
+th, td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--color-bg-tertiary);
+}
+
+th {
+    background: var(--color-bg-secondary);
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+}
+
+th:hover {
+    background: var(--color-bg-tertiary);
+}
+
+td {
+    color: var(--color-text);
+}
+
+tr:hover td {
+    background: var(--color-bg-secondary);
+}
+
+.scan-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-lg);
+    border-top: 1px solid var(--color-bg-tertiary);
+}
+
+.pagination-controls {
+    display: flex;
+    gap: var(--space-sm);
+}
+
+.page-btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--color-bg-tertiary);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-primary);
+    color: var(--color-text);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.page-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.page-btn:not(:disabled):hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.page-info {
+    color: var(--color-text-secondary);
+}
+
+select.page-size-select {
+    padding: 0.5rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-bg-tertiary);
+    background: var(--color-bg-primary);
+    color: var(--color-text);
+}
+
+/* Session Tabs */
+.session-tabs {
+    display: flex;
+    gap: var(--space-xs);
+    border-bottom: 2px solid var(--color-bg-tertiary);
+    padding-bottom: var(--space-sm);
+    overflow-x: auto;
+}
+
+.session-tab {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-lg);
+    border: none;
+    background: transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all var(--transition-fast);
+}
+
+.session-tab:hover {
+    color: var(--color-text);
+}
+
+.session-tab.active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+}
+
+.tab-icon {
+    font-size: 1.1em;
+}
+
+/* Filters Section */
+.filters-section {
+    background: var(--color-bg-primary);
+    padding: var(--space-lg);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-bg-tertiary);
+}
+
+.filters-section h3 {
+    margin: 0 0 var(--space-md) 0;
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+}
+
+.filters-grid {
+    display: flex;
+    gap: var(--space-lg);
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    min-width: 200px;
+}
+
+.filter-group label {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    font-weight: 500;
+}
+
+.filter-input {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-bg-tertiary);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-secondary);
+    color: var(--color-text);
+}
+
+.filter-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.filter-actions {
+    display: flex;
+    gap: var(--space-sm);
+}
+
+.filter-btn {
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.filter-btn.apply {
+    background: var(--color-primary);
+    color: white;
+    border: none;
+}
+
+.filter-btn.apply:hover {
+    background: var(--color-primary-dark);
+}
+
+.filter-btn.clear {
+    background: transparent;
+    border: 1px solid var(--color-bg-tertiary);
+    color: var(--color-text-secondary);
+}
+
+.filter-btn.clear:hover {
+    border-color: var(--color-text-secondary);
+}
+
+.table-title {
+    font-weight: 600;
+    font-size: var(--font-size-lg);
+}
+
+/* Tab Placeholder */
+.tab-placeholder {
+    background: var(--color-bg-primary);
+    padding: var(--space-3xl);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-bg-tertiary);
+    text-align: center;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-lg);
+}
+
