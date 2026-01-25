@@ -6,6 +6,7 @@ Manages environment variables and application settings using Pydantic Settings
 from functools import lru_cache
 from typing import List
 import os
+from urllib.parse import quote_plus
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
