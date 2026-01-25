@@ -1,4 +1,4 @@
-import { Paper, Title, Text, Group, Badge, ScrollArea, LoadingOverlay, BadgeProps } from '@mantine/core'
+import { Paper, Title, Text, Group, Badge, ScrollArea, LoadingOverlay } from '@mantine/core'
 import { AreaProgressItem } from './AreaProgressItem'
 import { AreaWiseTasksResponse, ClientWithTasks } from '../../../../types/analytics'
 

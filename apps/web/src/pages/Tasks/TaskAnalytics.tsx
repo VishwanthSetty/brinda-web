@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { Container, Grid, Title, Group, Box } from '@mantine/core'
+import { Container, Grid, Group } from '@mantine/core'
 import dayjs from 'dayjs'
 import { StatsHeader } from './components/StatsHeader'
 import { AreaWisePerformance } from './components/AreaWisePerformance'

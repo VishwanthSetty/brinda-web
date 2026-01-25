@@ -9,7 +9,6 @@ interface StatCardProps {
     badgeColor?: string
     icon: LucideIcon
     iconColor?: string
-    iconBg?: string
     borderColor?: string
     onClick?: () => void
 }
@@ -22,7 +21,6 @@ export function StatCard({
     badgeColor = 'green',
     icon: Icon,
     iconColor = 'teal',
-    iconBg = 'blue.0',
     borderColor = 'teal.7',
     onClick
 }: StatCardProps) {
