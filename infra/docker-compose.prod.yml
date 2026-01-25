@@ -33,7 +33,9 @@ services:
     container_name: brinda-api-prod
     restart: always
     environment:
-      MONGODB_URL: mongodb://${MONGODB_USER:-admin}:${MONGODB_PASSWORD}@mongodb:27017
+      MONGODB_URL: mongodb://mongodb:27017
+      MONGODB_USER: ${MONGODB_USER:-admin}
+      MONGODB_PASSWORD: ${MONGODB_PASSWORD}
       DATABASE_NAME: brinda_web
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       JWT_ALGORITHM: HS256

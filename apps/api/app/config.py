@@ -7,6 +7,7 @@ from functools import lru_cache
 from typing import List
 import os
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -41,7 +42,32 @@ class Settings(BaseSettings):
     unolo_id: str = os.getenv("UNOLO_ID", "")
     unolo_token: str = os.getenv("UNOLO_TOKEN", "")
     unolo_base_url: str = "https://api-lb-ext.unolo.com"
-    
+
+    @model_validator(mode='after')
+    def _update_mongodb_url(self) -> 'Settings':
+        """
+        Constructs a safe MongoDB URL with escaped credentials if provided
+        and updates the mongodb_url field.
+        """
+        if self.mongodb_user and self.mongodb_password:
+             safe_user = quote_plus(self.mongodb_user)
+             safe_pass = quote_plus(self.mongodb_password)
+             
+             # Default to "mongodb" service name if using docker compose default
+             # Use the host from existing URL if possible (e.g., mongodb://mongodb:27017 -> mongodb:27017)
+             original_url = self.mongodb_url
+             if "@" in original_url:
+                 # Strip existing credentials if present
+                 _, host_part = original_url.split("@", 1)
+             else:
+                 # Remove scheme
+                 host_part = original_url.replace("mongodb://", "")
+                 # If it was just "mongodb://localhost:27017"
+            
+             self.mongodb_url = f"mongodb://{safe_user}:{safe_pass}@{host_part}"
+
+        return self
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
