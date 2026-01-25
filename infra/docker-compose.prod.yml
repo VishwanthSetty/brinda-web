@@ -1,4 +1,12 @@
-version: "latest"
+# ================================
+# Docker Compose - Production
+# ================================
+# Usage: docker-compose -f infra/docker-compose.prod.yml up -d
+#
+# IMPORTANT: This file uses pre-built images. 
+# Build and push images via CI/CD before deploying:
+#   - brinda-api:${API_TAG:-latest}
+#   - brinda-web:${WEB_TAG:-latest}
 
 services:
   # MongoDB Database
@@ -19,8 +27,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-
-  # FastAPI Backend
+    # FastAPI Backend
   api:
     image: ${ECR_REGISTRY}/brinda-api:${API_TAG}
     container_name: brinda-api-prod
@@ -47,14 +54,20 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 10s
 
   # React Frontend (Static)
   web:
     image: ${ECR_REGISTRY}/brinda-web:${WEB_TAG}
     container_name: brinda-web-prod
     restart: always
+    ports:
+      - "80:80"
+      - "443:443"
     networks:
       - frontend
+    depends_on:
+      - api
     deploy:
       resources:
         limits:
@@ -65,30 +78,12 @@ services:
       timeout: 10s
       retries: 3
 
-  # Nginx Reverse Proxy
-  nginx:
-    image: nginx:alpine
-    container_name: brinda-nginx-prod
-    restart: always
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ../docker/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
-    networks:
-      - frontend
-    depends_on:
-      - api
-      - web
-    healthcheck:
-      test: wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 3
+# Removed separate 'nginx' service because 'web' image already includes Nginx + Assets.
+# Using 'web' as the primary entry point is the correct pattern for immutable images.
 
 volumes:
   mongodb_data:
-
+    driver: local
 
 networks:
   frontend:
