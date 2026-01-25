@@ -1,12 +1,4 @@
-# ================================
-# Docker Compose - Production
-# ================================
-# Usage: docker-compose -f infra/docker-compose.prod.yml up -d
-#
-# IMPORTANT: This file uses pre-built images. 
-# Build and push images via CI/CD before deploying:
-#   - brinda-api:${API_TAG:-latest}
-#   - brinda-web:${WEB_TAG:-latest}
+version: "latest"
 
 services:
   # MongoDB Database
@@ -27,15 +19,14 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-    # NOTE: MongoDB is intentionally NOT exposed to external network for security
 
-    # FastAPI Backend
+  # FastAPI Backend
   api:
-    image: brinda-api:${API_TAG:-latest}
+    image: ${ECR_REGISTRY}/brinda-api:${API_TAG}
     container_name: brinda-api-prod
     restart: always
     environment:
-      MONGODB_URL: mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD}@mongodb:27017
+      MONGODB_URL: mongodb://${MONGODB_USER:-admin}:${MONGODB_PASSWORD}@mongodb:27017
       DATABASE_NAME: brinda_web
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       JWT_ALGORITHM: HS256
@@ -43,7 +34,6 @@ services:
       ENVIRONMENT: production
       DEBUG: "false"
       ALLOWED_ORIGINS: ""
-    # Production-grade ASGI server with Gunicorn + Uvicorn workers
     command: >
       gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --workers 4
     networks:
@@ -57,11 +47,10 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
 
-  # React Frontend (Static files served by Nginx)
+  # React Frontend (Static)
   web:
-    image: brinda-web:${WEB_TAG:-latest}
+    image: ${ECR_REGISTRY}/brinda-web:${WEB_TAG}
     container_name: brinda-web-prod
     restart: always
     networks:
@@ -86,24 +75,20 @@ services:
       - "443:443"
     volumes:
       - ../docker/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
-      # SSL/TLS Configuration (choose one):
-      # Option A: Use AWS ALB + ACM (recommended for AWS deployments)
-      # Option B: Let's Encrypt + Certbot
-      # - ./certs:/etc/nginx/certs:ro
     networks:
       - frontend
     depends_on:
       - api
       - web
     healthcheck:
-      test: wget --no-verbose --tries=1 --spider http://localhost/health || exit 1
+      test: wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
       interval: 30s
       timeout: 10s
       retries: 3
 
 volumes:
   mongodb_data:
-    driver: local
+
 
 networks:
   frontend:
