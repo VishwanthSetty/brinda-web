@@ -47,9 +47,9 @@ def create_app() -> FastAPI:
         description="Backend API for the Book Publications Web Portal",
         version="1.0.0",
         lifespan=lifespan,
-        docs_url="/api/docs" if settings.is_development else None,
-        redoc_url="/api/redoc" if settings.is_development else None,
-        openapi_url="/api/openapi.json" if settings.is_development else None,
+        docs_url="/docs",      # Always enable Swagger UI
+        redoc_url="/redoc",    # Always enable ReDoc
+        openapi_url="/openapi.json",  # Always enable OpenAPI schema
     )
     
     # CORS Middleware

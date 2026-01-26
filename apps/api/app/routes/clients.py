@@ -235,102 +235,102 @@ async def sync_clients(
     # Since we use 'populate_by_name=True' and alias names in Pydantic, 
     # we can try to map API keys to our internal alias keys
     
-    # for item in clients_data:
-    #     try:
-    #         unolo_id = item.get("clientID") or item.get("id") or item.get("ID")
+    for item in clients_data:
+        try:
+            unolo_id = item.get("clientID") or item.get("id") or item.get("ID")
             
-    #         if not unolo_id:
-    #             # If no ID, we can't sync reliably
-    #             errors.append(f"Skipping client without ID: {item.get('clientName', 'Unknown')}")
-    #             continue
+            if not unolo_id:
+                # If no ID, we can't sync reliably
+                errors.append(f"Skipping client without ID: {item.get('clientName', 'Unknown')}")
+                continue
                 
-    #         # Convert ID to match stored format (likely string from API, but we store as is)
-    #         # In migrate_clients we used item.unolo_client_id
+            # Convert ID to match stored format (likely string from API, but we store as is)
+            # In migrate_clients we used item.unolo_client_id
             
-    #         # Map fields
-    #         # Note: We should ideally have a robust mapper, but here we do best effort
-    #         # to populate required fields if they exist in the API response.
-    #         # If the API returns raw custom fields, we might need adjustments.
+            # Map fields
+            # Note: We should ideally have a robust mapper, but here we do best effort
+            # to populate required fields if they exist in the API response.
+            # If the API returns raw custom fields, we might need adjustments.
             
-    #         # Construct a dictionary compatible with our DB schema
-    #         client_doc = {
-    #             "Client Name (*)": item.get("clientName") or item.get("Client Name (*)"),
-    #             "Address (*)": item.get("address") or item.get("Address (*)"),
-    #             "Latitude": item.get("latitude") or item.get("lat"),
-    #             "Longitude": item.get("longitude") or item.get("lon"),
-    #             "unolo_client_id": unolo_id,
+            # Construct a dictionary compatible with our DB schema
+            client_doc = {
+                "Client Name (*)": item.get("clientName") or item.get("Client Name (*)"),
+                "Address (*)": item.get("address") or item.get("Address (*)"),
+                "Latitude": item.get("latitude") or item.get("lat"),
+                "Longitude": item.get("longitude") or item.get("lon"),
+                "unolo_client_id": unolo_id,
                 
-    #             # Fill other required fields with defaults or data if missing
-    #             # Our Schema defines many required fields. If Unolo data is sparse, 
-    #             # we might have issues creating VALID Client objects locally if we strict parse.
-    #             # However, for MongoDB we can be flexible if we skip Pydantic validation 
-    #             # OR we fill required with placeholders.
+                # Fill other required fields with defaults or data if missing
+                # Our Schema defines many required fields. If Unolo data is sparse, 
+                # we might have issues creating VALID Client objects locally if we strict parse.
+                # However, for MongoDB we can be flexible if we skip Pydantic validation 
+                # OR we fill required with placeholders.
                 
-    #             # Let's map what we can find.
-    #             "Contact Name (*)": item.get("contactName", "N/A"),
-    #             "Contact Number (*)": item.get("contactNumber", "N/A"),
-    #             "Country Code (*)": item.get("countryCode", "+91"),
-    #             "Visible To (*)": str(item.get("employeeID", "")), # Mapping employeeID to visible to? Or separate?
+                # Let's map what we can find.
+                "Contact Name (*)": item.get("contactName", "N/A"),
+                "Contact Number (*)": item.get("contactNumber", "N/A"),
+                "Country Code (*)": item.get("countryCode", "+91"),
+                "Visible To (*)": str(item.get("employeeID", "")), # Mapping employeeID to visible to? Or separate?
                 
-    #              # Custom fields often come in a list or dict in Unolo API
-    #             # "Category": ...
-    #         }
+                 # Custom fields often come in a list or dict in Unolo API
+                # "Category": ...
+            }
             
-    #         # If specific keys exist in item, override
-    #         # Unolo V2 might return `customEntity` or `customFields`
+            # If specific keys exist in item, override
+            # Unolo V2 might return `customEntity` or `customFields`
             
-    #         # Merge raw item data to capture everything? 
-    #         # We want to preserve existing data in DB if we are just updating status.
+            # Merge raw item data to capture everything? 
+            # We want to preserve existing data in DB if we are just updating status.
             
-    #         existing = await collection.find_one({"unolo_client_id": unolo_id})
+            existing = await collection.find_one({"unolo_client_id": unolo_id})
 
-    #         if existing:
-    #             # UPDATE
-    #             # We only update fields that are present and not None/Empty in the new data
-    #             # To avoid wiping out our local enriched data.
+            if existing:
+                # UPDATE
+                # We only update fields that are present and not None/Empty in the new data
+                # To avoid wiping out our local enriched data.
                 
-    #             update_fields = {k: v for k, v in client_doc.items() if v is not None}
-    #             # Also add the raw API response as a backup field if needed? 
-    #             # update_fields["unolo_raw_data"] = item 
+                update_fields = {k: v for k, v in client_doc.items() if v is not None}
+                # Also add the raw API response as a backup field if needed? 
+                # update_fields["unolo_raw_data"] = item 
                 
-    #             update_fields["Last Modified At"] = now
+                update_fields["Last Modified At"] = now
                 
-    #             await collection.update_one(
-    #                 {"unolo_client_id": unolo_id},
-    #                 {"$set": update_fields}
-    #             )
-    #             updated_count += 1
-    #         else:
-    #             # INSERT
-    #             # We need to ensure we have enough checks for required fields if we rely on the app to read it.
-    #             # Use default Placeholders for required fields if missing
+                await collection.update_one(
+                    {"unolo_client_id": unolo_id},
+                    {"$set": update_fields}
+                )
+                updated_count += 1
+            else:
+                # INSERT
+                # We need to ensure we have enough checks for required fields if we rely on the app to read it.
+                # Use default Placeholders for required fields if missing
                 
-    #             required_defaults = {
-    #                  "Visible To (*)": "Admin", # Default assign
-    #                  "Can exec change location (*)": True,
-    #                  "Client Catagory (*)": "Uncategorized",
-    #                  "Division Name new (*)": "General",
-    #                  "Using Material (*)": "No",
-    #                  "Using IIT (*)": "No",
-    #                  "Using AI (*)": "No",
-    #                  "Address (*)": "Unknown Address",
-    #                  "Client Name (*)": f"Client {unolo_id}",
-    #                  "Contact Name (*)": "N/A",
-    #                  "Contact Number (*)": "N/A",
-    #                  "Country Code (*)": "+91"
-    #             }
+                required_defaults = {
+                     "Visible To (*)": "Admin", # Default assign
+                     "Can exec change location (*)": True,
+                     "Client Catagory (*)": "Uncategorized",
+                     "Division Name new (*)": "General",
+                     "Using Material (*)": "No",
+                     "Using IIT (*)": "No",
+                     "Using AI (*)": "No",
+                     "Address (*)": "Unknown Address",
+                     "Client Name (*)": f"Client {unolo_id}",
+                     "Contact Name (*)": "N/A",
+                     "Contact Number (*)": "N/A",
+                     "Country Code (*)": "+91"
+                }
                 
-    #             insert_doc = {**required_defaults, **client_doc}
-    #             insert_doc["Created At"] = now
-    #             insert_doc["Last Modified At"] = now
+                insert_doc = {**required_defaults, **client_doc}
+                insert_doc["Created At"] = now
+                insert_doc["Last Modified At"] = now
                 
-    #             await collection.insert_one(insert_doc)
-    #             created_count += 1
+                await collection.insert_one(insert_doc)
+                created_count += 1
                 
-    #     except Exception as e:
-    #         error_msg = f"Error syncing client ID {item.get('clientID')}: {str(e)}"
-    #         # logger.error(error_msg)
-    #         errors.append(error_msg)
+        except Exception as e:
+            error_msg = f"Error syncing client ID {item.get('clientID')}: {str(e)}"
+            # logger.error(error_msg)
+            errors.append(error_msg)
             
     return ClientMigrationResponse(
         total_processed=len(clients_data),

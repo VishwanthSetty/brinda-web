@@ -35,9 +35,7 @@ async def sync_tasks(
             end=end_str, 
             custom_task_name=custom_task_name
         )
-        
-        print(f"Fetched {tasks_data} tasks")
-        
+                
         stats["total_fetched"] = len(tasks_data)
         logger.info(f"Fetched {len(tasks_data)} tasks")
         
