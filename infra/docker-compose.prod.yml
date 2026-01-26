@@ -58,6 +58,13 @@ services:
       retries: 3
       start_period: 10s
 
+  # Certbot for SSL
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - certbot_www:/var/www/certbot
+      - certbot_conf:/etc/letsencrypt
+
   # React Frontend (Static)
   web:
     image: ${ECR_REGISTRY}/brinda-web:${WEB_TAG}
@@ -70,6 +77,9 @@ services:
       - frontend
     depends_on:
       - api
+    volumes:
+      - certbot_www:/var/www/certbot
+      - certbot_conf:/etc/letsencrypt
     deploy:
       resources:
         limits:
@@ -86,6 +96,9 @@ services:
 volumes:
   mongodb_data:
     driver: local
+  certbot_www:
+  certbot_conf:
+
 
 networks:
   frontend:
