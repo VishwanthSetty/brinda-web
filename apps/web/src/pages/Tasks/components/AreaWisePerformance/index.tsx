@@ -1,6 +1,6 @@
 import { Paper, Title, Text, Group, Badge, ScrollArea, LoadingOverlay } from '@mantine/core'
 import { AreaProgressItem } from './AreaProgressItem'
-import { AreaWiseTasksResponse, ClientWithTasks, Client, DrillDownData } from '../../../../types/analytics'
+import { AreaWiseTasksResponse, ClientWithTasks, Client } from '../../../../types/analytics'
 
 // Special type for Area Drilldown containing both visited and unvisited
 type AreaDrillDownData = {
@@ -26,14 +26,12 @@ export function AreaWisePerformance({ data, clientGroups, isLoading, onDrillDown
 
         // 2. Unvisited Clients
         let unvisitedClients: Client[] = [];
-        let totalCount = visitedClients.length;
 
         if (clientGroups && clientGroups.groups[area]) {
             const allInArea = clientGroups.groups[area] as Client[];
             const visitedIds = new Set(visitedClients.map(c => c.client.ID || c.client._id));
 
             unvisitedClients = allInArea.filter(c => !visitedIds.has(c.ID || c._id));
-            totalCount = allInArea.length;
         }
 
         onDrillDown(

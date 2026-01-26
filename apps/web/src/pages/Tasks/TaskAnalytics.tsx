@@ -12,7 +12,7 @@ import { DateFilter } from './components/DateFilter'
 import { useTaskAnalyticsQuery, useAreaWiseQuery, useSchoolCategoryQuery, useClientsGroupedQuery } from './hooks/useTaskAnalytics'
 import { DrillDownData, Task, ClientWithTasks, ClientWithLatestTask, Client } from '../../types/analytics'
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable, getSortedRowModel, SortingState } from '@tanstack/react-table'
-import { Modal, Table, Text, Badge } from '@mantine/core'
+import { Modal, Table, Text } from '@mantine/core'
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 
 type ViewMode = 'weekly' | 'monthly' | 'custom'
