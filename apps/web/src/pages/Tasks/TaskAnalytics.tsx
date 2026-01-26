@@ -6,15 +6,22 @@ import { StatsHeader } from './components/StatsHeader'
 import { AreaWisePerformance } from './components/AreaWisePerformance'
 import { SchoolCategoriesChart } from './components/SchoolCategoriesChart'
 import { ViewAllTasksCard } from './components/ViewAllTasksCard'
+import { AreaLeadDistributionChart } from './components/AreaLeadDistributionChart'
 import { PriorityTasksTable } from './components/PriorityTasksTable'
 import { DateFilter } from './components/DateFilter'
-import { useTaskAnalyticsQuery, useAreaWiseQuery, useSchoolCategoryQuery } from './hooks/useTaskAnalytics'
-import { DrillDownData, Task, ClientWithTasks, ClientWithLatestTask } from '../../types/analytics'
+import { useTaskAnalyticsQuery, useAreaWiseQuery, useSchoolCategoryQuery, useClientsGroupedQuery } from './hooks/useTaskAnalytics'
+import { DrillDownData, Task, ClientWithTasks, ClientWithLatestTask, Client } from '../../types/analytics'
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable, getSortedRowModel, SortingState } from '@tanstack/react-table'
-import { Modal, Table, Text } from '@mantine/core'
+import { Modal, Table, Text, Badge } from '@mantine/core'
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 
 type ViewMode = 'weekly' | 'monthly' | 'custom'
+
+// Special type for Area Drilldown containing both visited and unvisited
+type AreaDrillDownData = {
+    visited: ClientWithTasks[];
+    unvisited: Client[];
+}
 
 export default function TaskAnalytics() {
     const { selectedEmployee } = useOutletContext<{ selectedEmployee: string | null }>()
@@ -37,12 +44,13 @@ export default function TaskAnalytics() {
     const tasksQuery = useTaskAnalyticsQuery(startDateStr, endDateStr, selectedEmployee || undefined)
     const areaQuery = useAreaWiseQuery(startDateStr, endDateStr, selectedEmployee || undefined)
     const categoryQuery = useSchoolCategoryQuery(startDateStr, endDateStr, selectedEmployee || undefined)
-
+    // Fetch all clients grouped by area to determine total present vs visited
+    const clientGroupsQuery = useClientsGroupedQuery('AREA_WISE', "School", selectedEmployee || undefined)
 
     // Drilldown State
-    const [drillDown, setDrillDown] = useState<{ type: string; title: string; data: DrillDownData } | null>(null)
+    const [drillDown, setDrillDown] = useState<{ type: string; title: string; data: DrillDownData | AreaDrillDownData } | null>(null)
 
-    const handleDrillDown = (title: string, data: DrillDownData, type: string = 'tasks') => {
+    const handleDrillDown = (title: string, data: DrillDownData | AreaDrillDownData, type: string = 'tasks') => {
         setDrillDown({ type, title, data })
     }
 
@@ -121,7 +129,8 @@ export default function TaskAnalytics() {
                 <Grid.Col span={{ base: 12, md: 5 }}>
                     <AreaWisePerformance
                         data={areaQuery.data || null}
-                        isLoading={areaQuery.isLoading}
+                        clientGroups={clientGroupsQuery.data || null}
+                        isLoading={areaQuery.isLoading || clientGroupsQuery.isLoading}
                         onDrillDown={handleDrillDown}
                     />
                 </Grid.Col>
@@ -136,6 +145,13 @@ export default function TaskAnalytics() {
                     <ViewAllTasksCard
                         totalTasks={tasksQuery.data?.total || 0}
                         onViewAll={() => handleDrillDown('All Tasks', tasksQuery.data?.data || [], 'tasks')}
+                    />
+                </Grid.Col>
+                <Grid.Col span={12}>
+                    <AreaLeadDistributionChart
+                        data={categoryQuery.data || null}
+                        isLoading={categoryQuery.isLoading}
+                        onDrillDown={handleDrillDown}
                     />
                 </Grid.Col>
             </Grid>
@@ -162,7 +178,164 @@ export default function TaskAnalytics() {
     )
 }
 
-function DrillDownTable({ data, type }: { data: DrillDownData, type: string }) {
+function DrillDownTable({ data, type }: { data: DrillDownData | AreaDrillDownData, type: string }) {
+
+    // Handle Special "Mixed" View for Area Details (Visited vs Unvisited)
+    if (type === 'area_details') {
+        const { visited, unvisited } = data as AreaDrillDownData;
+        return (
+            <div>
+                <Text fw={700} size="lg" mb="sm">Visited Schools ({visited.length})</Text>
+                <SimpleClientTable data={visited} />
+
+                <Text fw={700} size="lg" mt="xl" mb="sm">Not Visited Schools ({unvisited.length})</Text>
+                <SimpleClientTable data={unvisited} isUnvisited />
+            </div>
+        )
+    }
+
+    return <SimpleDataTable data={data as any[]} type={type} />
+}
+
+// Reusable table for strict Client[] lists or ClientWithTasks[]
+function SimpleClientTable({ data, isUnvisited }: { data: (Client | ClientWithTasks)[], isUnvisited?: boolean }) {
+    const [sorting, setSorting] = useState<SortingState>([])
+
+    const columns: ColumnDef<Client | ClientWithTasks>[] = [
+        {
+            id: 'sno',
+            header: 'SNo.',
+            cell: (info) => info.row.index + 1,
+            size: 50,
+        },
+        {
+            header: 'Client Name',
+            accessorFn: (row) => {
+                const c = 'client' in row ? row.client : row;
+                return c['Client Name (*)'] || 'N/A';
+            }
+        }
+    ]
+
+    // Add specific columns for Visited (ClientWithTasks)
+    if (!isUnvisited) {
+        columns.push({
+            header: 'Latest Visit',
+            accessorFn: (row) => {
+                if ('tasks' in row && row.tasks && row.tasks.length > 0) {
+                    // Assuming tasks are sorted or we take the first/last? 
+                    // Usually backend groups sorts them, or we sort descending by date.
+                    // The user request for 'Latest Visit' typically implies the most recent checkin.
+                    // Let's assume row.tasks[0] is latest or we find max date. 
+                    // Without strict knowledge of order, we map dates and take max.
+                    // Safe approach:
+                    const dates = row.tasks.map((t: Task) => t.checkinTime ? new Date(t.checkinTime).getTime() : 0);
+                    const maxDate = Math.max(...dates);
+                    return maxDate > 0 ? new Date(maxDate).toLocaleDateString() : 'N/A';
+                }
+                return 'N/A';
+            }
+        });
+
+        columns.push({
+            header: 'Remarks',
+            accessorFn: (row) => {
+                if ('tasks' in row && row.tasks) {
+                    const allRemarks = row.tasks
+                        .map((t: Task) => t.metadata?.remarks || '')
+                        .filter((r: string) => r && r.trim() !== '');
+                    return allRemarks.length > 0 ? allRemarks.join(' | ') : 'N/A';
+                }
+                return 'N/A';
+            },
+            // Limit width or wrap text if needed, but accessorFn return string is fine for now
+        });
+
+        columns.push({
+            header: 'No of Visits',
+            accessorFn: (row) => {
+                if ('tasks' in row && row.tasks) {
+                    return row.tasks.length;
+                }
+                return 0;
+            },
+            // Limit width or wrap text if needed, but accessorFn return string is fine for now
+        });
+    }
+
+    const table = useReactTable({
+        data,
+        columns,
+        state: { sorting },
+        onSortingChange: setSorting,
+        getCoreRowModel: getCoreRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+    })
+
+    return (
+        <div style={{ overflow: 'auto', maxHeight: '70vh', position: 'relative' }}>
+            <Table stickyHeader>
+                <Table.Thead>
+                    {table.getHeaderGroups().map(headerGroup => (
+                        <Table.Tr key={headerGroup.id}>
+                            {headerGroup.headers.map((header, index) => (
+                                <Table.Th
+                                    key={header.id}
+                                    onClick={header.column.getToggleSortingHandler()}
+                                    style={{
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap',
+                                        position: 'sticky',
+                                        top: 0,
+                                        left: index === 0 ? 0 : index === 1 ? '50px' : undefined,
+                                        zIndex: index < 2 ? 20 : 10,
+                                        backgroundColor: 'var(--mantine-color-body)',
+                                        boxShadow: '0 1px 0 0 var(--mantine-color-gray-3)'
+                                    }}
+                                >
+                                    <Group gap="xs" justify="space-between" wrap="nowrap">
+                                        <Text size="sm" fw={700}>{flexRender(header.column.columnDef.header, header.getContext())}</Text>
+                                        {header.column.getIsSorted() === 'asc' ? <ChevronUp size={14} /> :
+                                            header.column.getIsSorted() === 'desc' ? <ChevronDown size={14} /> :
+                                                <ChevronsUpDown size={14} color="gray" style={{ opacity: 0.5 }} />}
+                                    </Group>
+                                </Table.Th>
+                            ))}
+                        </Table.Tr>
+                    ))}
+                </Table.Thead>
+                <Table.Tbody>
+                    {data.length === 0 ? (
+                        <Table.Tr><Table.Td colSpan={columns.length} align="center">No Data</Table.Td></Table.Tr>
+                    ) : (
+                        table.getRowModel().rows.map(row => (
+                            <Table.Tr key={row.id} bg={isUnvisited ? 'red.0' : undefined}>
+                                {row.getVisibleCells().map((cell, index) => (
+                                    <Table.Td
+                                        key={cell.id}
+                                        style={{
+                                            whiteSpace: 'nowrap',
+                                            position: index < 2 ? 'sticky' : undefined,
+                                            left: index === 0 ? 0 : index === 1 ? '50px' : undefined,
+                                            zIndex: index < 2 ? 5 : undefined,
+                                            backgroundColor: index < 2 ? (isUnvisited ? 'var(--mantine-color-red-0)' : 'var(--mantine-color-body)') : undefined,
+                                            boxShadow: index === 1 ? '2px 0 5px -2px rgba(0,0,0,0.1)' : undefined
+                                        }}
+                                    >
+                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                    </Table.Td>
+                                ))}
+                            </Table.Tr>
+                        ))
+                    )}
+                </Table.Tbody>
+            </Table>
+        </div>
+    )
+}
+
+// Wrapper for the previous generic logic to keep it clean
+function SimpleDataTable({ data, type }: { data: any[], type: string }) {
     const [sorting, setSorting] = useState<SortingState>([])
 
     let columns: ColumnDef<any>[] = []
@@ -191,6 +364,8 @@ function DrillDownTable({ data, type }: { data: DrillDownData, type: string }) {
             { header: 'Revisit Date', accessorFn: (row: Task) => row.metadata?.revisitDate || 'N/A' },
             { header: 'Specimens Given', accessorFn: (row: Task) => row.metadata?.specimensGiven || 'N/A' },
             { header: 'Purpose of Visit', accessorFn: (row: Task) => row.metadata?.purposeOfVisit?.join(', ') || 'N/A' },
+            { header: 'Remarks', accessorFn: (row: Task) => row.metadata?.remarks || 'N/A' }
+
         ]
     } else if (type === 'area') {
         columns = [
@@ -214,7 +389,9 @@ function DrillDownTable({ data, type }: { data: DrillDownData, type: string }) {
             },
             { header: 'Client', accessorFn: (row: ClientWithLatestTask) => row.client?.['Client Name (*)'] || 'N/A' },
             { header: 'Category', accessorFn: (row: ClientWithLatestTask) => row.school_category },
-            { header: 'Latest Task Date', accessorFn: (row: ClientWithLatestTask) => row.latest_task?.date || 'N/A' }
+            { header: 'Latest Task Date', accessorFn: (row: ClientWithLatestTask) => row.latest_task?.date || 'N/A' },
+            { header: 'Remarks', accessorFn: (row: ClientWithLatestTask) => row.latest_task?.metadata?.remarks || 'N/A' }
+
         ]
     }
 
@@ -230,15 +407,25 @@ function DrillDownTable({ data, type }: { data: DrillDownData, type: string }) {
     })
 
     return (
-        <div style={{ overflowX: 'auto' }}>
-            <Table>
+        <div style={{ overflow: 'auto', maxHeight: '70vh', position: 'relative' }}>
+            <Table stickyHeader>
                 <Table.Thead>
                     {table.getHeaderGroups().map(headerGroup => (
                         <Table.Tr key={headerGroup.id}>
-                            {headerGroup.headers.map(header => (
+                            {headerGroup.headers.map((header, index) => (
                                 <Table.Th
                                     key={header.id}
-                                    style={{ cursor: 'pointer', userSelect: 'none' }}
+                                    style={{
+                                        cursor: 'pointer',
+                                        userSelect: 'none',
+                                        whiteSpace: 'nowrap',
+                                        position: 'sticky',
+                                        top: 0,
+                                        left: index === 0 ? 0 : index === 1 ? '50px' : undefined,
+                                        zIndex: index < 2 ? 20 : 10,
+                                        backgroundColor: 'var(--mantine-color-body)',
+                                        boxShadow: '0 1px 0 0 var(--mantine-color-gray-3)'
+                                    }}
                                     onClick={header.column.getToggleSortingHandler()}
                                 >
                                     <Group gap="xs" justify="space-between" wrap="nowrap">
@@ -260,8 +447,18 @@ function DrillDownTable({ data, type }: { data: DrillDownData, type: string }) {
                     ) : (
                         table.getRowModel().rows.map(row => (
                             <Table.Tr key={row.id}>
-                                {row.getVisibleCells().map(cell => (
-                                    <Table.Td key={cell.id}>
+                                {row.getVisibleCells().map((cell, index) => (
+                                    <Table.Td
+                                        key={cell.id}
+                                        style={{
+                                            whiteSpace: 'nowrap',
+                                            position: index < 2 ? 'sticky' : undefined,
+                                            left: index === 0 ? 0 : index === 1 ? '50px' : undefined,
+                                            zIndex: index < 2 ? 5 : undefined,
+                                            backgroundColor: index < 2 ? 'var(--mantine-color-body)' : undefined,
+                                            boxShadow: index === 1 ? '2px 0 5px -2px rgba(0,0,0,0.1)' : undefined
+                                        }}
+                                    >
                                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                     </Table.Td>
                                 ))}

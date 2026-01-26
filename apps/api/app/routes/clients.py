@@ -221,7 +221,7 @@ async def sync_clients(
     
     try:
         clients_data = await unolo_client.get_all_clients()
-        print(clients_data[1:4])
+        print(clients_data[1])
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch clients from Unolo: {str(e)}")
     

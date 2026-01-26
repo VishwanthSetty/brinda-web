@@ -27,7 +27,7 @@ export function AreaProgressItem({ area, visited, total, data, onDrillDown }: Ar
             <Group justify="space-between" mb={4}>
                 <Text fw={600} size="sm" c="dark.9">{area}</Text>
                 <Text fw={700} size="xs" c="dimmed">
-                    {visited} / {total}
+                    {visited} / {total} Visited
                 </Text>
             </Group>
             <Progress

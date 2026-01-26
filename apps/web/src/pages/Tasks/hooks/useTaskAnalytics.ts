@@ -41,3 +41,18 @@ export const useSchoolCategoryQuery = (
         enabled: !!startDate && !!endDate
     })
 }
+
+export const useClientsGroupedQuery = (
+    groupBy: 'AREA_WISE' | 'MATERIAL',
+    clientCategory?: 'School' | 'Distributor',
+    employeeId?: string
+) => {
+    return useQuery<{
+        groups: Record<string, any[]>;
+        unassigned: any[];
+        total: number;
+    }>({
+        queryKey: ['clientsGrouped', groupBy, employeeId],
+        queryFn: () => analyticsApi.getGroupedClients(groupBy, clientCategory, employeeId || undefined),
+    })
+}
