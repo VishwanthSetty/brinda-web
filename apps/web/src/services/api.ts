@@ -96,6 +96,17 @@ export const authApi = {
         request<{ message: string }>('/auth/logout', {
             method: 'POST',
         }),
+    changePassword: (credentials: { old_password: string; new_password: string }) =>
+        request<{ message: string }>('/auth/change-password', {
+            method: 'POST',
+            body: JSON.stringify(credentials),
+        }),
+
+    adminUpdateUser: (data: { user_id?: string; emp_id?: string; email?: string; password?: string; role?: string }) =>
+        request<{ message: string }>('/auth/update-user', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        }),
 }
 
 /**

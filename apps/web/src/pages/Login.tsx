@@ -145,11 +145,8 @@ export default function Login() {
                 <div className="demo-info glass">
                     <h4>Demo Credentials</h4>
                     <p>
-                        <strong>Email:</strong> admin@brinda.com<br />
-                        <strong>Password:</strong> password123
-                    </p>
-                    <p className="demo-note">
-                        Note: Register a user first via the API to test login.
+                        <strong>Email:</strong> abc@abc.com<br />
+                        <strong>Password:</strong> abc@123
                     </p>
                 </div>
             </div>

@@ -5,15 +5,15 @@ import dayjs from 'dayjs'
 import { StatsHeader } from './components/StatsHeader'
 import { AreaWisePerformance } from './components/AreaWisePerformance'
 import { SchoolCategoriesChart } from './components/SchoolCategoriesChart'
-import { ViewAllTasksCard } from './components/ViewAllTasksCard'
+// import { ViewAllTasksCard } from './components/ViewAllTasksCard' // Removed
 import { AreaLeadDistributionChart } from './components/AreaLeadDistributionChart'
 import { PriorityTasksTable } from './components/PriorityTasksTable'
 import { DateFilter } from './components/DateFilter'
 import { useTaskAnalyticsQuery, useAreaWiseQuery, useSchoolCategoryQuery, useClientsGroupedQuery } from './hooks/useTaskAnalytics'
 import { DrillDownData, Task, ClientWithTasks, ClientWithLatestTask, Client } from '../../types/analytics'
-import { ColumnDef, flexRender, getCoreRowModel, useReactTable, getSortedRowModel, SortingState } from '@tanstack/react-table'
-import { Modal, Table, Text } from '@mantine/core'
-import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
+import { Modal, Table, Text, Badge, TextInput } from '@mantine/core'
+import { ChevronUp, ChevronDown, ChevronsUpDown, Search } from 'lucide-react'
+import { ColumnDef, flexRender, getCoreRowModel, useReactTable, getSortedRowModel, SortingState, getFilteredRowModel } from '@tanstack/react-table'
 
 type ViewMode = 'weekly' | 'monthly' | 'custom'
 
@@ -122,11 +122,20 @@ export default function TaskAnalytics() {
                 totalLeadsGoal={300} // Mock goal
                 totalSpecimens={totalSpecimens}
                 onSpecimenClick={handleSpecimenClick}
+                onTotalTasksClick={() => handleDrillDown('All Tasks', tasksQuery.data?.data || [], 'tasks')}
             />
 
             {/* Main Grid */}
             <Grid gutter="md">
-                <Grid.Col span={{ base: 12, md: 5 }}>
+                {/* Section 2: Area Distribution & Performance */}
+                <Grid.Col span={{ base: 12, md: 6 }}>
+                    <AreaLeadDistributionChart
+                        data={categoryQuery.data || null}
+                        isLoading={categoryQuery.isLoading}
+                        onDrillDown={handleDrillDown}
+                    />
+                </Grid.Col>
+                <Grid.Col span={{ base: 12, md: 6 }}>
                     <AreaWisePerformance
                         data={areaQuery.data || null}
                         clientGroups={clientGroupsQuery.data || null}
@@ -134,6 +143,8 @@ export default function TaskAnalytics() {
                         onDrillDown={handleDrillDown}
                     />
                 </Grid.Col>
+
+                {/* Section 3: Categories & Priority Tasks */}
                 <Grid.Col span={{ base: 12, md: 4 }}>
                     <SchoolCategoriesChart
                         data={categoryQuery.data || null}
@@ -141,26 +152,13 @@ export default function TaskAnalytics() {
                         onCategoryClick={handleCategoryClick}
                     />
                 </Grid.Col>
-                <Grid.Col span={{ base: 12, md: 3 }}>
-                    <ViewAllTasksCard
-                        totalTasks={tasksQuery.data?.total || 0}
-                        onViewAll={() => handleDrillDown('All Tasks', tasksQuery.data?.data || [], 'tasks')}
-                    />
-                </Grid.Col>
-                <Grid.Col span={12}>
-                    <AreaLeadDistributionChart
-                        data={categoryQuery.data || null}
-                        isLoading={categoryQuery.isLoading}
-                        onDrillDown={handleDrillDown}
+                <Grid.Col span={{ base: 12, md: 8 }}>
+                    <PriorityTasksTable
+                        data={priorityTasks}
+                        onViewAll={() => handleDrillDown('Priority Tasks', priorityTasks, 'tasks')}
                     />
                 </Grid.Col>
             </Grid>
-
-            {/* Priority Tasks Table */}
-            <PriorityTasksTable
-                data={priorityTasks}
-                onViewAll={() => handleDrillDown('Priority Tasks', priorityTasks, 'tasks')}
-            />
 
             {/* Drilldown Modal using Mantine Modal */}
             <Modal
@@ -200,6 +198,18 @@ function DrillDownTable({ data, type }: { data: DrillDownData | AreaDrillDownDat
 // Reusable table for strict Client[] lists or ClientWithTasks[]
 function SimpleClientTable({ data, isUnvisited }: { data: (Client | ClientWithTasks)[], isUnvisited?: boolean }) {
     const [sorting, setSorting] = useState<SortingState>([])
+    const [globalFilter, setGlobalFilter] = useState('')
+
+    // Helper to get Badge for category
+    const getCategoryBadge = (category: string) => {
+        const lowerCat = category?.toLowerCase() || '';
+        let color = 'gray';
+        if (lowerCat.includes('hot')) color = 'red';
+        else if (lowerCat.includes('warm')) color = 'yellow';
+        else if (lowerCat.includes('cold')) color = 'blue';
+
+        return <Badge color={color} variant="light">{category || 'No Info'}</Badge>;
+    };
 
     const columns: ColumnDef<Client | ClientWithTasks>[] = [
         {
@@ -219,6 +229,24 @@ function SimpleClientTable({ data, isUnvisited }: { data: (Client | ClientWithTa
 
     // Add specific columns for Visited (ClientWithTasks)
     if (!isUnvisited) {
+        columns.push({
+            header: 'Category',
+            accessorFn: (row) => {
+
+                //get latest date tasks category
+                let cat = 'N/A';
+                if ('tasks' in row && row.tasks && row.tasks.length > 0) {
+                    const sortedTasks = [...row.tasks].sort((a, b) => {
+                        const dateA = a.checkinTime ? new Date(a.checkinTime).getTime() : 0;
+                        const dateB = b.checkinTime ? new Date(b.checkinTime).getTime() : 0;
+                        return dateB - dateA;
+                    });
+                    cat = sortedTasks[0]?.metadata?.schoolCategory?.[0];
+                }
+                return cat;
+            },
+            cell: (info) => getCategoryBadge(info.getValue() as string)
+        });
         columns.push({
             header: 'Latest Visit',
             accessorFn: (row) => {
@@ -266,14 +294,23 @@ function SimpleClientTable({ data, isUnvisited }: { data: (Client | ClientWithTa
     const table = useReactTable({
         data,
         columns,
-        state: { sorting },
+        state: { sorting, globalFilter },
         onSortingChange: setSorting,
+        onGlobalFilterChange: setGlobalFilter,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
     })
 
     return (
         <div style={{ overflow: 'auto', maxHeight: '70vh', position: 'relative' }}>
+            <TextInput
+                placeholder="Search clients..."
+                mb="md"
+                leftSection={<Search size={14} />}
+                value={globalFilter ?? ''}
+                onChange={e => setGlobalFilter(e.target.value)}
+            />
             <Table stickyHeader>
                 <Table.Thead>
                     {table.getHeaderGroups().map(headerGroup => (
@@ -337,6 +374,18 @@ function SimpleClientTable({ data, isUnvisited }: { data: (Client | ClientWithTa
 // Wrapper for the previous generic logic to keep it clean
 function SimpleDataTable({ data, type }: { data: any[], type: string }) {
     const [sorting, setSorting] = useState<SortingState>([])
+    const [globalFilter, setGlobalFilter] = useState('')
+
+    // Helper to get Badge for category
+    const getCategoryBadge = (category: string) => {
+        const lowerCat = category?.toLowerCase() || '';
+        let color = 'gray';
+        if (lowerCat.includes('hot')) color = 'red';
+        else if (lowerCat.includes('warm')) color = 'yellow';
+        else if (lowerCat.includes('cold')) color = 'blue';
+
+        return <Badge color={color} variant="light">{category || 'No Info'}</Badge>;
+    };
 
     let columns: ColumnDef<any>[] = []
 
@@ -354,7 +403,14 @@ function SimpleDataTable({ data, type }: { data: any[], type: string }) {
                 header: 'School Category',
                 accessorFn: (row: Task) => {
                     const val = row.schoolCategory || row.metadata?.schoolCategory;
-                    return Array.isArray(val) ? val.join(', ') : (val || 'N/A');
+                    return val;
+                },
+                cell: (info) => {
+                    const val = info.getValue() as string | string[];
+                    if (Array.isArray(val)) {
+                        return <Group gap={4}>{val.map((v, i) => <div key={i}>{getCategoryBadge(v)}</div>)}</Group>;
+                    }
+                    return getCategoryBadge(val as string);
                 }
             },
             { header: 'Division Name', accessorFn: (row: Task) => row.client?.['Division Name new (*)'] || 'N/A' },
@@ -388,10 +444,31 @@ function SimpleDataTable({ data, type }: { data: any[], type: string }) {
                 size: 50,
             },
             { header: 'Client', accessorFn: (row: ClientWithLatestTask) => row.client?.['Client Name (*)'] || 'N/A' },
-            { header: 'Category', accessorFn: (row: ClientWithLatestTask) => row.school_category },
+            {
+                header: 'Category',
+                accessorFn: (row: ClientWithLatestTask) => row.school_category,
+                cell: (info) => getCategoryBadge(info.getValue() as string)
+            },
             { header: 'Latest Task Date', accessorFn: (row: ClientWithLatestTask) => row.latest_task?.date || 'N/A' },
             { header: 'Remarks', accessorFn: (row: ClientWithLatestTask) => row.latest_task?.metadata?.remarks || 'N/A' }
 
+        ]
+    } else if (type === 'all-categories') {
+        columns = [
+            {
+                id: 'sno',
+                header: 'SNo.',
+                cell: (info) => info.row.index + 1,
+                size: 50,
+            },
+            { header: 'Client', accessorFn: (row: ClientWithLatestTask) => row.client?.['Client Name (*)'] || 'N/A' },
+            {
+                header: 'Category',
+                accessorFn: (row: ClientWithLatestTask) => row.latest_task?.metadata?.schoolCategory?.[0] || row.school_category,
+                cell: (info) => getCategoryBadge(info.getValue() as string)
+            },
+            { header: 'Latest Task Date', accessorFn: (row: ClientWithLatestTask) => row.latest_task?.date || 'N/A' },
+            { header: 'Remarks', accessorFn: (row: ClientWithLatestTask) => row.latest_task?.metadata?.remarks || 'N/A' }
         ]
     }
 
@@ -400,14 +477,24 @@ function SimpleDataTable({ data, type }: { data: any[], type: string }) {
         columns,
         state: {
             sorting,
+            globalFilter,
         },
         onSortingChange: setSorting,
+        onGlobalFilterChange: setGlobalFilter,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
     })
 
     return (
         <div style={{ overflow: 'auto', maxHeight: '70vh', position: 'relative' }}>
+            <TextInput
+                placeholder="Search..."
+                mb="md"
+                leftSection={<Search size={14} />}
+                value={globalFilter ?? ''}
+                onChange={e => setGlobalFilter(e.target.value)}
+            />
             <Table stickyHeader>
                 <Table.Thead>
                     {table.getHeaderGroups().map(headerGroup => (

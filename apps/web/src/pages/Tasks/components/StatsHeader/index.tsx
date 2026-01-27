@@ -16,8 +16,9 @@ export function StatsHeader({
     hotLeadsCount,
     totalLeadsGoal = 215,
     totalSpecimens = 0,
-    onSpecimenClick
-}: StatsHeaderProps) {
+    onSpecimenClick,
+    onTotalTasksClick
+}: StatsHeaderProps & { onTotalTasksClick?: () => void }) {
     return (
         <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md" mb="xl">
             <StatCard
@@ -26,6 +27,7 @@ export function StatsHeader({
                 icon={ClipboardList}
                 borderColor="teal.7"
                 iconColor="teal"
+                onClick={onTotalTasksClick}
             />
             <StatCard
                 title="Active Hot Leads"

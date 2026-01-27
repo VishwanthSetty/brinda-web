@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     # JWT Authentication
     jwt_secret: str = "your-super-secret-key-change-in-production"
     jwt_algorithm: str = "HS256"
-    jwt_expire_minutes: int = 30
+    jwt_expire_minutes: int = 7200
     
     # Application Settings
     environment: str = "development"

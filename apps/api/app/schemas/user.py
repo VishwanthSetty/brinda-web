@@ -94,3 +94,20 @@ class LoginRequest(BaseModel):
     """Login request model."""
     email: EmailStr
     password: str
+
+
+class ChangePasswordRequest(BaseModel):
+    """Request model for self-service password change."""
+    old_password: str
+    new_password: str = Field(..., min_length=8)
+
+
+class AdminUserUpdate(BaseModel):
+    """Request model for admin/manager to update user credentials."""
+    user_id: Optional[str] = None
+    emp_id: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: Optional[str] = Field(None, min_length=8)
+    role: Optional[UserRole] = None  # Admin might want to change roles too
+
+

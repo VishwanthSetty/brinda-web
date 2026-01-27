@@ -1,4 +1,5 @@
-import { Paper, Title, Text, ScrollArea, LoadingOverlay } from '@mantine/core';
+import { Paper, Title, Text, ScrollArea, LoadingOverlay, Button } from '@mantine/core';
+import { useState } from 'react';
 import { AreaLeadDistributionBar } from './AreaLeadDistributionBar';
 import { SchoolCategoryResponse, ClientWithLatestTask } from '../../../../types/analytics';
 
@@ -42,21 +43,30 @@ export function AreaLeadDistributionChart({
     // 3. Prepare Display Data
     const areas = Array.from(areaMap.keys());
 
-    // Sort areas by Total Visited Descending
+    // Sort areas by Hot Descending, then Warm Descending
     const sortedAreas = areas.sort((a, b) => {
         const statsA = areaMap.get(a)!;
         const statsB = areaMap.get(b)!;
+
+        const hotDiff = statsB.hot.length - statsA.hot.length;
+        if (hotDiff !== 0) return hotDiff;
+
+        const warmDiff = statsB.warm.length - statsA.warm.length;
+        if (warmDiff !== 0) return warmDiff;
+
         return statsB.visitedTotal - statsA.visitedTotal;
     });
 
+    const [expanded, setExpanded] = useState(false);
+
     return (
-        <Paper withBorder p="md" radius="md" mt="md">
+        <Paper withBorder p="md" radius="md" h="100%" style={{ display: 'flex', flexDirection: 'column' }}>
             <LoadingOverlay visible={isLoading} zIndex={1000} overlayProps={{ radius: "sm", blur: 2 }} />
 
             <Title order={4} mb={4}>Area-wise Lead Distribution</Title>
             <Text size="xs" c="dimmed" mb="xl">Distribution of leads across areas by quality</Text>
 
-            <ScrollArea h={400} type="always" offsetScrollbars>
+            <ScrollArea h={expanded ? 'auto' : 300} type="always" offsetScrollbars>
                 <div style={{ paddingRight: 15 }}>
                     {sortedAreas.map(area => {
                         const stats = areaMap.get(area)!;
@@ -80,6 +90,18 @@ export function AreaLeadDistributionChart({
                     )}
                 </div>
             </ScrollArea>
+
+            {sortedAreas.length > 5 && (
+                <Button
+                    variant="subtle"
+                    fullWidth
+                    mt="sm"
+                    onClick={() => setExpanded(!expanded)}
+                    size="xs"
+                >
+                    {expanded ? 'Show Less' : 'Show All Areas'}
+                </Button>
+            )}
         </Paper>
     );
 }

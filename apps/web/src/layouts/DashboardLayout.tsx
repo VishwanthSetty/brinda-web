@@ -7,8 +7,8 @@ import { useState } from 'react'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import EmployeeSelector from '../components/EmployeeSelector'
-import { clientsApi, tasksApi } from '../services/api'
-import { Button } from '@mantine/core'
+import { authApi, clientsApi, tasksApi } from '../services/api'
+import { Button, Menu, Modal, PasswordInput, Stack } from '@mantine/core'
 import {
     LayoutDashboard,
     BarChart2,
@@ -203,8 +203,92 @@ export default function DashboardLayout() {
         )
     }
 
+    const [passwordModalOpen, setPasswordModalOpen] = useState(false)
+    const [passwordForm, setPasswordForm] = useState({
+        current: '',
+        new: '',
+        confirm: ''
+    })
+    const [passwordError, setPasswordError] = useState('')
+    const [passwordSuccess, setPasswordSuccess] = useState('')
+    const [isChangingPassword, setIsChangingPassword] = useState(false)
+
+    const handlePasswordChangeSubmit = async () => {
+        setPasswordError('')
+        setPasswordSuccess('')
+
+        if (passwordForm.new !== passwordForm.confirm) {
+            setPasswordError("New passwords do not match")
+            return
+        }
+
+        if (passwordForm.new.length < 8) {
+            setPasswordError("Password must be at least 8 characters")
+            return
+        }
+
+        setIsChangingPassword(true)
+        try {
+            await authApi.changePassword({
+                old_password: passwordForm.current,
+                new_password: passwordForm.new
+            })
+            setPasswordSuccess("Password updated successfully")
+            setTimeout(() => {
+                setPasswordModalOpen(false)
+                setPasswordForm({ current: '', new: '', confirm: '' })
+                setPasswordSuccess('')
+            }, 1500)
+        } catch (err: any) {
+            setPasswordError(err.response?.data?.detail || "Failed to update password")
+        } finally {
+            setIsChangingPassword(false)
+        }
+    }
+
     return (
         <div className="dashboard-layout">
+            <Modal
+                opened={passwordModalOpen}
+                onClose={() => setPasswordModalOpen(false)}
+                title="Change Password"
+                centered
+            >
+                <Stack>
+                    <PasswordInput
+                        label="Current Password"
+                        placeholder="Enter current password"
+                        value={passwordForm.current}
+                        onChange={(e) => setPasswordForm({ ...passwordForm, current: e.currentTarget.value })}
+                        error={passwordError && !passwordForm.current ? true : undefined}
+                    />
+                    <PasswordInput
+                        label="New Password"
+                        placeholder="Enter new password (min 8 chars)"
+                        value={passwordForm.new}
+                        onChange={(e) => setPasswordForm({ ...passwordForm, new: e.currentTarget.value })}
+                    />
+                    <PasswordInput
+                        label="Confirm New Password"
+                        placeholder="Confirm new password"
+                        value={passwordForm.confirm}
+                        onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.currentTarget.value })}
+                        error={passwordError}
+                    />
+
+                    {passwordSuccess && <div style={{ color: 'green', fontSize: '0.9rem' }}>{passwordSuccess}</div>}
+
+                    <Button
+                        fullWidth
+                        onClick={handlePasswordChangeSubmit}
+                        loading={isChangingPassword}
+                        mt="md"
+                    >
+                        Update Password
+                    </Button>
+                </Stack>
+            </Modal>
+
             {/* Sidebar */}
             <aside className="sidebar">
                 <div className="sidebar-header">
@@ -221,18 +305,35 @@ export default function DashboardLayout() {
                 </nav>
 
                 <div className="sidebar-footer">
-                    <div className="user-info">
-                        <div className="user-avatar">
-                            {user?.full_name?.[0]?.toUpperCase() || 'U'}
-                        </div>
-                        <div className="user-details">
-                            <span className="user-name">{user?.full_name}</span>
-                            <span className="user-role">{user?.role}</span>
-                        </div>
-                    </div>
-                    <button onClick={handleLogout} className="logout-btn">
-                        Logout
-                    </button>
+                    <Menu shadow="md" width={200} position="right-end">
+                        <Menu.Target>
+                            <div className="user-info" style={{ cursor: 'pointer' }}>
+                                <div className="user-avatar">
+                                    {user?.full_name?.[0]?.toUpperCase() || 'U'}
+                                </div>
+                                <div className="user-details">
+                                    <span className="user-name">{user?.full_name}</span>
+                                    <span className="user-role">{user?.role}</span>
+                                </div>
+                            </div>
+                        </Menu.Target>
+
+                        <Menu.Dropdown>
+                            <Menu.Label>Account</Menu.Label>
+                            <Menu.Item leftSection={<User size={14} />} onClick={() => setPasswordModalOpen(true)}>
+                                Change Password
+                            </Menu.Item>
+                            <Menu.Divider />
+                            <Menu.Item
+                                color="red"
+                                leftSection={<Upload size={14} style={{ transform: 'rotate(90deg)' }} />} // Using upload icon rotated as logout or just use text
+                                onClick={handleLogout}
+                            >
+                                Logout
+                            </Menu.Item>
+                        </Menu.Dropdown>
+                    </Menu>
+
                 </div>
             </aside>
 
@@ -280,3 +381,4 @@ export default function DashboardLayout() {
         </div>
     )
 }
+

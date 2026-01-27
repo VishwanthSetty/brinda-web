@@ -1,4 +1,4 @@
-import { Paper, Title, Button, Table, Badge, ActionIcon, Group, Text } from '@mantine/core'
+import { Paper, Title, Button, Table, Badge, ActionIcon, Group, Text, TextInput } from '@mantine/core'
 import {
     flexRender,
     getCoreRowModel,
@@ -6,9 +6,10 @@ import {
     ColumnDef,
     getPaginationRowModel,
     getSortedRowModel,
+    getFilteredRowModel,
     SortingState,
 } from '@tanstack/react-table'
-import { Phone, Mail, MoreVertical, AlertTriangle, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
+import { Phone, Mail, MoreVertical, AlertTriangle, ChevronUp, ChevronDown, ChevronsUpDown, Search } from 'lucide-react'
 import { Task } from '../../../../types/analytics'
 import { useState } from 'react'
 
@@ -23,6 +24,7 @@ interface PriorityTasksTableProps {
 
 export function PriorityTasksTable({ data, onViewAll }: PriorityTasksTableProps) {
     const [sorting, setSorting] = useState<SortingState>([])
+    const [globalFilter, setGlobalFilter] = useState('')
 
     const columns: ColumnDef<Task, any>[] = [
         {
@@ -48,7 +50,6 @@ export function PriorityTasksTable({ data, onViewAll }: PriorityTasksTableProps)
                         </div>
                         <div>
                             <Text size="sm" fw={500} c="dark">{name}</Text>
-                            <Text size="xs" c="dimmed">Lead ID: #{info.row.original.taskID?.substring(0, 4)}</Text>
                         </div>
                     </Group>
                 )
@@ -113,12 +114,15 @@ export function PriorityTasksTable({ data, onViewAll }: PriorityTasksTableProps)
     const table = useReactTable({
         data,
         columns,
-        state: {
-            sorting,
-        },
         onSortingChange: setSorting,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        onGlobalFilterChange: setGlobalFilter,
+        state: {
+            sorting,
+            globalFilter,
+        },
         getPaginationRowModel: getPaginationRowModel(),
         initialState: {
             pagination: {
@@ -128,17 +132,26 @@ export function PriorityTasksTable({ data, onViewAll }: PriorityTasksTableProps)
     })
 
     return (
-        <Paper withBorder p="md" radius="md" mt="xl">
+        <Paper withBorder p="md" radius="md" h="100%" style={{ display: 'flex', flexDirection: 'column' }}>
             <Group justify="space-between" mb="md">
                 <Title order={4} size="h5" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <AlertTriangle size={20} className="text-red-500" style={{ color: 'var(--mantine-color-red-6)' }} />
                     Priority Tasks
                 </Title>
-                <Button variant="transparent" size="sm" onClick={onViewAll}>View all tasks</Button>
+                <Group>
+                    <TextInput
+                        placeholder="Search..."
+                        size="xs"
+                        leftSection={<Search size={14} />}
+                        value={globalFilter}
+                        onChange={(e) => setGlobalFilter(e.target.value)}
+                    />
+                    <Button variant="transparent" size="sm" onClick={onViewAll}>View all tasks</Button>
+                </Group>
             </Group>
 
             {/* Table implementation */}
-            <div style={{ overflowX: 'auto' }}>
+            <div style={{ overflowX: 'auto', flex: 1 }}>
                 <Table highlightOnHover verticalSpacing="sm">
                     <Table.Thead>
                         {table.getHeaderGroups().map(headerGroup => (
