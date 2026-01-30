@@ -113,7 +113,13 @@ export default function DashboardLayout() {
         try {
             // 1. Sync Clients
             setSyncStatus('Syncing Clients...')
-            const clientRes = await clientsApi.syncClients()
+            let clientRes: any = {
+                total_processed: 0,
+                created: 0,
+                updated: 0,
+                deleted: 0
+            }
+            // clientRes = await clientsApi.syncClients()
 
             // 2. Sync Tasks (29 days batch, 2 months back)
             setSyncStatus('Syncing Tasks...')
