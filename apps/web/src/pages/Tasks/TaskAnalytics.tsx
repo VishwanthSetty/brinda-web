@@ -88,17 +88,24 @@ export default function TaskAnalytics() {
     }
 
     const handleCategoryClick = (category: string) => {
-        const allTasks = tasksQuery.data?.data || []
-        const filtered = allTasks.filter(t => {
-            const cats = t.schoolCategory || t.metadata?.schoolCategory || []
-            // Handle "No Info" case or exact match
-            if (category === 'No Info') {
-                return !cats || cats.length === 0 || (cats.length === 1 && cats[0] === 'NoInfo')
-            }
-            return Array.isArray(cats) && cats.includes(category)
-        })
+        // Use categoryQuery.data which has unique schools with their latest task
+        const catData = categoryQuery.data
+        if (!catData) return
 
-        handleDrillDown(`${category} Tasks`, filtered, 'tasks')
+        let filtered: ClientWithLatestTask[] = []
+
+        // Map category name to the correct data key
+        if (category === 'Hot') {
+            filtered = catData.hot || []
+        } else if (category === 'Warm') {
+            filtered = catData.warm || []
+        } else if (category === 'Cold') {
+            filtered = catData.cold || []
+        } else if (category === 'No Info') {
+            filtered = catData.no_info || []
+        }
+
+        handleDrillDown(`${category} Schools`, filtered, 'category')
     }
 
     return (
@@ -419,6 +426,14 @@ function SimpleDataTable({ data, type }: { data: any[], type: string }) {
             { header: 'Revisit', accessorFn: (row: Task) => row.metadata?.revisit?.join(', ') || 'N/A' },
             { header: 'Revisit Date', accessorFn: (row: Task) => row.metadata?.revisitDate || 'N/A' },
             { header: 'Specimens Given', accessorFn: (row: Task) => row.metadata?.specimensGiven || 'N/A' },
+            {
+                header: 'New Specimens Given',
+                accessorFn: (row: Task) => {
+                    const val = row.metadata?.newSpecimenGiven;
+                    if (Array.isArray(val)) return val.join(', ');
+                    return val || 'N/A';
+                }
+            },
             { header: 'Purpose of Visit', accessorFn: (row: Task) => row.metadata?.purposeOfVisit?.join(', ') || 'N/A' },
             { header: 'Remarks', accessorFn: (row: Task) => row.metadata?.remarks || 'N/A' }
 
@@ -432,6 +447,7 @@ function SimpleDataTable({ data, type }: { data: any[], type: string }) {
                 size: 50,
             },
             { header: 'Client', accessorFn: (row: ClientWithTasks) => row.client?.['Client Name (*)'] || 'N/A' },
+            { header: 'Phone No.', accessorFn: (row: ClientWithTasks) => row.client?.['Contact Number (*)'] || 'N/A' },
             { header: 'Area', accessorFn: (row: ClientWithTasks) => row.client?.['Division Name new (*)'] || 'N/A' },
             { header: 'Task Count', accessorFn: (row: ClientWithTasks) => row.task_count }
         ]
@@ -444,12 +460,22 @@ function SimpleDataTable({ data, type }: { data: any[], type: string }) {
                 size: 50,
             },
             { header: 'Client', accessorFn: (row: ClientWithLatestTask) => row.client?.['Client Name (*)'] || 'N/A' },
+            { header: 'Phone No.', accessorFn: (row: ClientWithLatestTask) => row.client?.['Contact Number (*)'] || 'N/A' },
+
             {
                 header: 'Category',
                 accessorFn: (row: ClientWithLatestTask) => row.school_category,
                 cell: (info) => getCategoryBadge(info.getValue() as string)
             },
             { header: 'Latest Task Date', accessorFn: (row: ClientWithLatestTask) => row.latest_task?.date || 'N/A' },
+            {
+                header: 'New Specimens Given',
+                accessorFn: (row: ClientWithLatestTask) => {
+                    const val = row.latest_task?.metadata?.newSpecimenGiven;
+                    if (Array.isArray(val)) return val.join(', ');
+                    return val || 'N/A';
+                }
+            },
             { header: 'Remarks', accessorFn: (row: ClientWithLatestTask) => row.latest_task?.metadata?.remarks || 'N/A' }
 
         ]
@@ -462,12 +488,22 @@ function SimpleDataTable({ data, type }: { data: any[], type: string }) {
                 size: 50,
             },
             { header: 'Client', accessorFn: (row: ClientWithLatestTask) => row.client?.['Client Name (*)'] || 'N/A' },
+            { header: 'Phone No.', accessorFn: (row: ClientWithLatestTask) => row.client?.['Contact Number (*)'] || 'N/A' },
+
             {
                 header: 'Category',
                 accessorFn: (row: ClientWithLatestTask) => row.latest_task?.metadata?.schoolCategory?.[0] || row.school_category,
                 cell: (info) => getCategoryBadge(info.getValue() as string)
             },
             { header: 'Latest Task Date', accessorFn: (row: ClientWithLatestTask) => row.latest_task?.date || 'N/A' },
+            {
+                header: 'New Specimens Given',
+                accessorFn: (row: ClientWithLatestTask) => {
+                    const val = row.latest_task?.metadata?.newSpecimenGiven;
+                    if (Array.isArray(val)) return val.join(', ');
+                    return val || 'N/A';
+                }
+            },
             { header: 'Remarks', accessorFn: (row: ClientWithLatestTask) => row.latest_task?.metadata?.remarks || 'N/A' }
         ]
     }

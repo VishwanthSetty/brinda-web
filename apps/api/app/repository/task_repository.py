@@ -322,7 +322,8 @@ class TaskRepository:
         client_category: Optional[str] = None
     ) -> Dict[str, List[Dict]]:
         """
-        Get latest task per client, grouped by schoolCategory (Hot/Cold/NoInfo).
+        Get latest task per client (school), grouped by schoolCategory (Hot/Cold/Warm/NoInfo).
+        Each school appears only once with its most recent task.
         """
         # Convert to UTC-aware datetime
         start_dt = datetime(start_date.year, start_date.month, start_date.day, tzinfo=timezone.utc)
@@ -339,26 +340,20 @@ class TaskRepository:
                     ]
                 }
             },
-            # 2. Sort by checkinTime desc
-            {"$sort": {"checkinTime": -1}},
-            # 3. Group by clientID to get latest task
-            {
-                "$group": {
-                    "_id": "$clientID",
-                    "latest_task": {"$first": "$$ROOT"}
-                }
-            },
-            # 4. Lookup client info
+            # 2. Lookup client info FIRST (before grouping)
             {
                 "$lookup": {
                     "from": "clients",
-                    "let": {"cid": "$_id"},
+                    "let": {"cid": "$clientID"},
                     "pipeline": [
                         {"$match": {
                             "$expr": {
                                 "$or": [
                                     {"$eq": ["$unolo_client_id", "$$cid"]},
-                                    {"$eq": [{"$toString": "$unolo_client_id"}, "$$cid"]}
+                                    {"$eq": [{"$toString": "$unolo_client_id"}, "$$cid"]},
+                                    {"$eq": ["$ID", "$$cid"]},
+                                    {"$eq": [{"$toString": "$ID"}, "$$cid"]},
+                                    {"$eq": [{"$toString": "$_id"}, "$$cid"]}
                                 ]
                             }
                         }}
@@ -371,9 +366,20 @@ class TaskRepository:
                     "path": "$client_info",
                     "preserveNullAndEmptyArrays": True
                 }
+            },
+            # 3. Sort by checkinTime desc (most recent first)
+            {"$sort": {"checkinTime": -1}},
+            # 4. Group by the CLIENT's actual _id (not clientID from task) to ensure unique schools
+            {
+                "$group": {
+                    "_id": "$client_info._id",
+                    "latest_task": {"$first": "$$ROOT"},
+                    "client_info": {"$first": "$client_info"}
+                }
             }
         ]
         
+        # Filter by client category if specified
         if client_category and client_category.lower() != "both":
             pipeline.append({"$match": {"client_info.Client Catagory (*)": client_category}})
             
@@ -385,11 +391,19 @@ class TaskRepository:
             task = doc["latest_task"]
             client = doc.get("client_info", {}) # Default to empty dict
             
+            # Skip if no valid client (tasks without matched clients)
+            if not client or not doc.get("_id"):
+                continue
+            
             # Fix ObjectId serialization
             if client and "_id" in client:
                 client["_id"] = str(client["_id"])
             if "_id" in task:
                 task["_id"] = str(task["_id"])
+            
+            # Remove nested client_info from task to avoid duplication
+            if "client_info" in task:
+                del task["client_info"]
             
             # Extract schoolCategory from metadata
             metadata = task.get("metadata", {})
