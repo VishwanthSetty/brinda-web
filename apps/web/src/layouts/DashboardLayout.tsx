@@ -7,7 +7,7 @@ import { useState } from 'react'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import EmployeeSelector from '../components/EmployeeSelector'
-import { authApi, clientsApi, tasksApi } from '../services/api'
+import { authApi, tasksApi } from '../services/api'
 import { Button, Menu, Modal, PasswordInput, Stack } from '@mantine/core'
 import {
     LayoutDashboard,
