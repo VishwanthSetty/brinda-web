@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     # Unolo External API
     unolo_id: str = os.getenv("UNOLO_ID", "")
     unolo_token: str = os.getenv("UNOLO_TOKEN", "")
-    unolo_base_url: str = "https://api-lb-ext.unolo.com"
+    unolo_base_url: str = os.getenv("UNOLO_BASE_URL", "https://api-lb-ext.unolo.com")
     
     # SMTP Email Configuration
     smtp_host: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
