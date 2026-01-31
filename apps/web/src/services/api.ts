@@ -288,3 +288,32 @@ export const analyticsApi = {
     }
 }
 
+/**
+ * Contact API
+ */
+export interface ContactFormData {
+    name: string;
+    email: string;
+    phone: string;
+    subject: string;
+    message: string;
+}
+
+export interface ApiResponse {
+    success: boolean;
+    message: string;
+}
+
+export const contactApi = {
+    submit: (data: ContactFormData) =>
+        request<ApiResponse>('/contact/submit', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        }),
+}
+
+/**
+ * Compatibility export for Contact.tsx
+ */
+export const submitContactForm = contactApi.submit;
+

@@ -1,0 +1,137 @@
+/* About Page Styles */
+.about-page {
+  min-height: 100vh;
+  padding-bottom: 6rem;
+}
+
+.about-hero {
+  background-color: #003366;
+  color: white;
+  padding: 8rem 0 6rem;
+  text-align: center;
+}
+
+.about-hero h1 {
+  font-size: 3rem;
+  font-weight: 900;
+  font-family: serif;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .about-hero h1 {
+    font-size: 4rem;
+  }
+}
+
+.about-hero p {
+  font-size: var(--font-size-xl);
+  color: #dbeafe; /* blue-100 */
+  max-width: 48rem;
+  margin: 0 auto;
+  line-height: 1.625;
+}
+
+.mission-section {
+  padding: 6rem 0;
+  background: white;
+}
+
+.mission-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 3rem;
+  margin-top: 4rem;
+}
+
+@media (min-width: 768px) {
+  .mission-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.mission-card {
+  background: #f8fafc; /* slate-50 */
+  padding: 3rem;
+  border-radius: 2rem;
+  border: 1px solid #e2e8f0;
+}
+
+.mission-icon {
+  margin-bottom: 1.5rem;
+  color: #0056b3;
+}
+
+.mission-card h3 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 1rem;
+  font-family: serif;
+}
+
+.mission-card p {
+  color: #475569;
+  line-height: 1.75;
+  font-size: var(--font-size-lg);
+}
+
+.story-section {
+  padding: 6rem 0;
+  background-color: #fca5a5; /* Simplified bg for demo, usually image */
+  background: linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9)), url('https://picsum.photos/seed/bg_pattern/1920/1080');
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+.story-content {
+  max-width: 48rem;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.story-text {
+  font-size: var(--font-size-lg);
+  color: #334155;
+  line-height: 1.8;
+  margin-bottom: 2rem;
+}
+
+.values-section {
+  padding: 6rem 0;
+  background: white;
+}
+
+.values-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 56rem;
+  margin: 0 auto;
+}
+
+.value-item {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.value-number {
+  font-size: 4rem;
+  font-weight: 900;
+  color: #e2e8f0;
+  line-height: 1;
+  font-family: serif;
+}
+
+.value-content h4 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 0.5rem;
+}
+
+.value-content p {
+  color: #64748b;
+  line-height: 1.625;
+}

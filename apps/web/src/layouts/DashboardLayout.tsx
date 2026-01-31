@@ -4,10 +4,11 @@
  */
 
 import { useState } from 'react'
+import toast from 'react-hot-toast'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import EmployeeSelector from '../components/EmployeeSelector'
-import { authApi, tasksApi } from '../services/api'
+import { authApi, clientsApi, tasksApi } from '../services/api'
 import { Button, Menu, Modal, PasswordInput, Stack } from '@mantine/core'
 import {
     LayoutDashboard,
@@ -20,7 +21,6 @@ import {
     Link as LinkIcon,
     School,
     Truck,
-    BookOpen,
     ChevronRight,
     TrendingUp
 } from 'lucide-react'
@@ -119,7 +119,7 @@ export default function DashboardLayout() {
                 updated: 0,
                 deleted: 0
             }
-            // clientRes = await clientsApi.syncClients()
+            clientRes = await clientsApi.syncClients()
 
             // 2. Sync Tasks (29 days batch, 2 months back)
             setSyncStatus('Syncing Tasks...')
@@ -159,12 +159,12 @@ export default function DashboardLayout() {
                 currentStart.setDate(currentStart.getDate() + 1)
             }
 
-            alert(`Sync Complete\nClients Processed: ${clientRes.total_processed
+            toast.success(`Sync Complete\nClients Processed: ${clientRes.total_processed
                 }\nTasks Processed: ${totalTasks}`)
 
         } catch (error: any) {
             console.error(error)
-            alert(`Sync Failed: ${error.message || 'Unknown error occurred'}`)
+            toast.error(`Sync Failed: ${error.message || 'Unknown error occurred'}`)
         } finally {
             setIsSyncing(false)
             setSyncStatus('')
@@ -299,9 +299,7 @@ export default function DashboardLayout() {
             <aside className="sidebar">
                 <div className="sidebar-header">
                     <Link to="/" className="sidebar-logo">
-                        <span className="logo-icon">
-                            <BookOpen size={24} />
-                        </span>
+                        <img src="/brinda_only_logo.svg" alt="Logo" className="logo-icon" style={{ height: '32px', width: 'auto' }} />
                         <span className="logo-text">Brinda</span>
                     </Link>
                 </div>

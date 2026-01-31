@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import toast from 'react-hot-toast'
 import { employeesApi } from '../../services/api'
 import '../ClientStatistics.css' // Reusing styles for consistent look
 
@@ -27,7 +28,7 @@ export default function EmployeeStatistics() {
             setSyncing(true)
             setError(null)
             const result = await employeesApi.sync()
-            alert(`Sync Completed!\nCreated: ${result.created}\nUpdated: ${result.updated}\nErrors: ${result.errors}`)
+            toast.success(`Sync Completed!\nCreated: ${result.created}\nUpdated: ${result.updated}\nErrors: ${result.errors}`)
             fetchStats()
         } catch (err: any) {
             setError(err.message)

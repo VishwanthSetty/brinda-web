@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.database import db_manager
-from app.routes import auth, products, dashboard, clients, employees, tasks, analytics
+from app.routes import auth, products, dashboard, clients, employees, tasks, analytics, webhooks, contact
 
 from app.models.employee import Employee
 from app.models.client import ClientInDB
@@ -61,6 +61,11 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     
+    # API Logging Middleware
+    from app.middleware.logging import APILoggingMiddleware
+    app.add_middleware(APILoggingMiddleware)
+
+    
     # Health Check Endpoint
     @app.get("/api/health", tags=["Health"])
     async def health_check():
@@ -83,6 +88,9 @@ def create_app() -> FastAPI:
     app.include_router(employees.router, prefix="/api/employees", tags=["Employees"])
     app.include_router(tasks.router, prefix="/api/tasks", tags=["Tasks"])
     app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
+    app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
+    app.include_router(webhooks.router, prefix="/api/webhooks", tags=["Webhooks"])
+    app.include_router(contact.router, prefix="/api/contact", tags=["Contact"])
     
     return app
 

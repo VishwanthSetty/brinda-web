@@ -63,7 +63,7 @@ export default function Login() {
                     {/* Header */}
                     <div className="login-header">
                         <Link to="/" className="login-logo">
-                            <span className="logo-icon">📚</span>
+                            <img src="/brinda_only_logo.svg" alt="Logo" style={{ height: '60px', width: 'auto' }} />
                         </Link>
                         <h1 className="login-title">Welcome Back</h1>
                         <p className="login-subtitle">
@@ -141,14 +141,6 @@ export default function Login() {
                     </div>
                 </div>
 
-                {/* Demo Credentials */}
-                <div className="demo-info glass">
-                    <h4>Demo Credentials</h4>
-                    <p>
-                        <strong>Email:</strong> abc@abc.com<br />
-                        <strong>Password:</strong> abc@123
-                    </p>
-                </div>
             </div>
         </div>
     )

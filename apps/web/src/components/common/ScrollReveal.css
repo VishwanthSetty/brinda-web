@@ -1,0 +1,12 @@
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(3rem); /* translate-y-12 */
+  transition-property: all;
+  transition-duration: 1000ms;
+  transition-timing-function: cubic-bezier(0.17, 0.55, 0.55, 1);
+}
+
+.scroll-reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}

@@ -1,0 +1,131 @@
+/* Schools Public Page Styles */
+.schools-public-page {
+  min-height: 100vh;
+  padding-bottom: 6rem;
+}
+
+.school-hero {
+  background-color: #f0fdf4; /* green-50 */
+  padding: 8rem 0 6rem;
+  text-align: center;
+}
+
+.school-hero h1 {
+  color: #166534; /* green-800 */
+  font-size: 3rem;
+  font-weight: 900;
+  font-family: serif;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .school-hero h1 {
+    font-size: 4rem;
+  }
+}
+
+.school-hero p {
+  font-size: var(--font-size-xl);
+  color: #15803d; /* green-700 */
+  max-width: 48rem;
+  margin: 0 auto;
+}
+
+.partners-section {
+  padding: 6rem 0;
+  background: white;
+}
+
+.partner-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 3rem;
+  background: white;
+  border-radius: 2rem;
+  border: 1px solid #e2e8f0;
+  transition: all 300ms;
+}
+
+@media (min-width: 768px) {
+    .partners-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2rem;
+    }
+}
+
+.partner-card:hover {
+  border-color: #16a34a; /* green-600 */
+  box-shadow: var(--shadow-xl);
+  transform: translateY(-0.5rem);
+}
+
+.p-icon-box {
+  width: 5rem;
+  height: 5rem;
+  background-color: #dcfce7; /* green-100 */
+  color: #16a34a;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.partner-card h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 1rem;
+}
+
+.partner-card p {
+  color: #64748b;
+  line-height: 1.625;
+}
+
+.visit-cta {
+  background-color: #111827;
+  color: white;
+  padding: 6rem 0;
+  margin-top: 4rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.cta-flex {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 2rem;
+  position: relative;
+  z-index: 10;
+}
+
+.cta-flex h2 {
+  font-size: 2.25rem;
+  font-weight: 700;
+  font-family: serif;
+  margin-bottom: 1rem;
+}
+
+.btn-visit {
+  background-color: #16a34a; /* green-600 */
+  color: white;
+  padding: 1rem 2.5rem;
+  border-radius: 0.75rem;
+  font-weight: 700;
+  border: none;
+  font-size: var(--font-size-lg);
+  cursor: pointer;
+  transition: all 200ms;
+  box-shadow: var(--shadow-lg);
+}
+
+.btn-visit:hover {
+  background-color: #15803d; /* green-700 */
+  transform: scale(1.05);
+}

@@ -43,6 +43,16 @@ class Settings(BaseSettings):
     unolo_id: str = os.getenv("UNOLO_ID", "")
     unolo_token: str = os.getenv("UNOLO_TOKEN", "")
     unolo_base_url: str = "https://api-lb-ext.unolo.com"
+    
+    # SMTP Email Configuration
+    smtp_host: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port: int = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user: str = os.getenv("SMTP_USER", "")
+    smtp_password: str = os.getenv("SMTP_PASSWORD", "")
+    contact_recipient_email: str = os.getenv("CONTACT_RECIPIENT_EMAIL", "brindapublications@gmail.com")
+
+    # Webhook Configuration
+    webhook_secret: str = os.getenv("WEBHOOK_SECRET", "")
 
     @model_validator(mode='after')
     def _update_mongodb_url(self) -> 'Settings':

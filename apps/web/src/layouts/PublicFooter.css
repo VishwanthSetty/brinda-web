@@ -1,0 +1,135 @@
+.public-footer {
+  background-color: #111827; /* gray-900 */
+  color: #d1d5db; /* gray-300 */
+  padding-top: 3rem; /* py-12 */
+  padding-bottom: 3rem;
+}
+
+.footer-container {
+  max-width: 80rem; /* max-w-7xl */
+  margin: 0 auto;
+  padding: 0 var(--space-md);
+}
+
+@media (min-width: 640px) {
+  .footer-container {
+    padding: 0 var(--space-lg);
+  }
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+
+@media (min-width: 768px) {
+  .footer-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.footer-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-col {
+  grid-column: span 1;
+}
+
+@media (min-width: 768px) {
+  /* .brand-col {
+    grid-column: span 1;
+  } - Default is fine */ 
+}
+
+.footer-title {
+  color: white;
+  font-size: 1.25rem; /* text-xl */
+  font-weight: 900;
+  margin-bottom: 1rem;
+  font-family: serif;
+}
+
+.footer-desc {
+  font-size: var(--font-size-sm);
+  line-height: 1.625;
+  margin-bottom: 1rem;
+}
+
+.social-links {
+  display: flex;
+  gap: 1rem;
+}
+
+.social-link {
+  color: inherit;
+  transition: color 200ms;
+}
+
+.social-link:hover {
+  color: white;
+}
+
+.footer-heading {
+  color: white;
+  font-size: var(--font-size-base); /* text-md equivalent? Using base usually */
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.footer-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column; /* space-y-2 */
+  gap: 0.5rem;
+  font-size: var(--font-size-sm);
+}
+
+.footer-link {
+  color: inherit;
+  text-decoration: none;
+  transition: color 200ms;
+}
+
+.footer-link:hover {
+  color: #60a5fa; /* blue-400 */
+}
+
+.contact-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column; /* space-y-4 */
+  gap: 1rem;
+  font-size: var(--font-size-sm);
+}
+
+.contact-item {
+  display: flex;
+  align-items: flex-start; /* items-start */
+  gap: 0.75rem;
+}
+
+.contact-icon {
+  color: #60a5fa; /* blue-400 */
+  flex-shrink: 0;
+  margin-top: 0.125rem; /* mt-0.5 */
+}
+
+.center-icon {
+    margin-top: 0;
+    align-self: center;
+}
+
+.footer-copyright {
+  border-top: 1px solid #1f2937; /* gray-800 */
+  margin-top: 2.5rem; /* mt-10 */
+  padding-top: 1.5rem; /* pt-6 */
+  text-align: center;
+  font-size: var(--font-size-xs);
+}

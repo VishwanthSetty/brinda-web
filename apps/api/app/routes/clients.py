@@ -18,6 +18,7 @@ from app.schemas.client import (
     ClientMigrationResponse,
     ClientBase,
 )
+from app.external.unolo_client import get_unolo_client, UnoloClient
 from app.services.client import get_clients
 from app.repository.employee_repository import employee_repository
 
@@ -202,7 +203,6 @@ async def migrate_clients(
     )
 
 
-from app.external.unolo_client import get_unolo_client, UnoloClient
 
 
 
@@ -220,8 +220,8 @@ async def sync_clients(
     collection = db["clients"]
     
     try:
-        clients_data = await unolo_client.get_all_clients()
-        print(clients_data[1])
+        clients_data_raw = await unolo_client.get_all_clients()
+        # print(clients_data_raw[1] if clients_data_raw else "No data") 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch clients from Unolo: {str(e)}")
     
@@ -231,68 +231,78 @@ async def sync_clients(
     
     now = datetime.now(timezone.utc)
     
-    # Common mappings from typical Unolo API fields to our Schema Aliases
-    # Since we use 'populate_by_name=True' and alias names in Pydantic, 
-    # we can try to map API keys to our internal alias keys
-    
-    for item in clients_data:
+    from app.schemas.unolo import UnoloClientResponse
+
+    for item_raw in clients_data_raw:
         try:
-            unolo_id = item.get("clientID") or item.get("id") or item.get("ID")
+            # Validate with Pydantic
+            try:
+                item = UnoloClientResponse(**item_raw)
+            except Exception as e:
+                # If validation fails, log but maybe try to proceed or skip? 
+                # For now let's skip to ensure data integrity, or log error
+                errors.append(f"Validation error for item {item_raw.get('clientName', 'Unknown')}: {e}")
+                continue
+
+            unolo_id = item.client_id or item.internal_client_id
             
             if not unolo_id:
-                # If no ID, we can't sync reliably
-                errors.append(f"Skipping client without ID: {item.get('clientName', 'Unknown')}")
+                errors.append(f"Skipping client without ID: {item.client_name}")
                 continue
                 
-            # Convert ID to match stored format (likely string from API, but we store as is)
-            # In migrate_clients we used item.unolo_client_id
+            # Logic to extract Contact Name/Number if not explicit
+            c_name = item.contact_name or "N/A"
+            c_number = item.contact_number or "N/A"
             
-            # Map fields
-            # Note: We should ideally have a robust mapper, but here we do best effort
-            # to populate required fields if they exist in the API response.
-            # If the API returns raw custom fields, we might need adjustments.
-            
-            # Construct a dictionary compatible with our DB schema
+            # If 'contact' field is "Name @ Number", parse it? 
+            if item.contact and " @ " in item.contact:
+                parts = item.contact.split(" @ ")
+                if len(parts) >= 2:
+                    if c_name == "N/A": c_name = parts[0]
+                    if c_number == "N/A": c_number = parts[1]
+
+            # Construct dictionary
             client_doc = {
-                "Client Name (*)": item.get("clientName") or item.get("Client Name (*)"),
-                "Address (*)": item.get("address") or item.get("Address (*)"),
-                "Latitude": item.get("latitude") or item.get("lat"),
-                "Longitude": item.get("longitude") or item.get("lon"),
+                "Client Name (*)": item.client_name,
+                "Address (*)": item.address,
+                "Latitude": item.lat,
+                "Longitude": item.lng,
                 "unolo_client_id": unolo_id,
                 
-                # Fill other required fields with defaults or data if missing
-                # Our Schema defines many required fields. If Unolo data is sparse, 
-                # we might have issues creating VALID Client objects locally if we strict parse.
-                # However, for MongoDB we can be flexible if we skip Pydantic validation 
-                # OR we fill required with placeholders.
+                "Contact Name (*)": c_name,
+                "Contact Number (*)": c_number,
+                "Country Code (*)": item.country_code or "+91",
                 
-                # Let's map what we can find.
-                "Contact Name (*)": item.get("contactName", "N/A"),
-                "Contact Number (*)": item.get("contactNumber", "N/A"),
-                "Country Code (*)": item.get("countryCode", "+91"),
-                "Visible To (*)": str(item.get("employeeID", "")), # Mapping employeeID to visible to? Or separate?
+                # Visible To mapping
+                # item.visibility is a list of objects [{'type': 'EMPLOYEE', 'value': 245225}]
+                # We need to map this to an employee name or ID potentially.
+                # For now, let's keep the existing logic or map it safely.
+                # Previous code: str(item.get("employeeID", ""))
+                # Schema has visibility list. 
+                "Visible To (*)": str(item.created_by_emp_id) if item.created_by_emp_id else "Admin", 
+
+                # Mapped Custom Fields
+                "Client Catagory (*)": item.client_catagory or item.client_category or "Uncategorized",
+                "Division Name new (*)": item.division_name_new or "General",
+                "Using Material (*)": item.using_material or "No",
                 
-                 # Custom fields often come in a list or dict in Unolo API
-                # "Category": ...
+                "School Strength": item.school_strength,
+                "Using IIT (*)": item.using_iit or "No",
+                "Using AI (*)": "No", # Not in new schema yet?
+                "Branches Places": item.branches_places,
+                "Building": item.building,
+                
+                # Other mappings
+                "Distributor Name": item.distributor_name,
+                "Radius(m)": item.radius,
+                "Otp Verified": bool(item.otp_verified) if item.otp_verified is not None else False,
             }
-            
-            # If specific keys exist in item, override
-            # Unolo V2 might return `customEntity` or `customFields`
-            
-            # Merge raw item data to capture everything? 
-            # We want to preserve existing data in DB if we are just updating status.
             
             existing = await collection.find_one({"unolo_client_id": unolo_id})
 
             if existing:
                 # UPDATE
-                # We only update fields that are present and not None/Empty in the new data
-                # To avoid wiping out our local enriched data.
-                
                 update_fields = {k: v for k, v in client_doc.items() if v is not None}
-                # Also add the raw API response as a backup field if needed? 
-                # update_fields["unolo_raw_data"] = item 
-                
                 update_fields["Last Modified At"] = now
                 
                 await collection.update_one(
@@ -302,11 +312,8 @@ async def sync_clients(
                 updated_count += 1
             else:
                 # INSERT
-                # We need to ensure we have enough checks for required fields if we rely on the app to read it.
-                # Use default Placeholders for required fields if missing
-                
                 required_defaults = {
-                     "Visible To (*)": "Admin", # Default assign
+                     "Visible To (*)": "Admin", 
                      "Can exec change location (*)": True,
                      "Client Catagory (*)": "Uncategorized",
                      "Division Name new (*)": "General",
@@ -328,12 +335,11 @@ async def sync_clients(
                 created_count += 1
                 
         except Exception as e:
-            error_msg = f"Error syncing client ID {item.get('clientID')}: {str(e)}"
-            # logger.error(error_msg)
+            error_msg = f"Error syncing client ID {item_raw.get('clientID')}: {str(e)}"
             errors.append(error_msg)
             
     return ClientMigrationResponse(
-        total_processed=len(clients_data),
+        total_processed=len(clients_data_raw),
         created_count=created_count,
         updated_count=updated_count,
         errors=errors
