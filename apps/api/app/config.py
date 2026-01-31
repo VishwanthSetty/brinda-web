@@ -75,7 +75,9 @@ class Settings(BaseSettings):
                  host_part = original_url.replace("mongodb://", "")
                  # If it was just "mongodb://localhost:27017"
             
-             self.mongodb_url = f"mongodb://{safe_user}:{safe_pass}@{host_part}"
+             # Append authSource=admin for root credentials
+             separator = "?" if "?" not in host_part else "&"
+             self.mongodb_url = f"mongodb://{safe_user}:{safe_pass}@{host_part}{separator}authSource=admin"
 
         return self
 

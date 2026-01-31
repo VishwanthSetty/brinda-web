@@ -43,6 +43,15 @@ services:
       ENVIRONMENT: production
       DEBUG: "false"
       ALLOWED_ORIGINS: ""
+      UNOLO_ID: ${UNOLO_ID}
+      UNOLO_TOKEN: ${UNOLO_TOKEN}
+      UNOLO_BASE_URL: ${UNOLO_BASE_URL}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      CONTACT_RECIPIENT_EMAIL: ${CONTACT_RECIPIENT_EMAIL}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
     command: >
       gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --workers 4
     networks:
