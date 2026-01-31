@@ -1,0 +1,7 @@
+/* Import base skeleton styles */
+@import 'react-loading-skeleton/dist/skeleton.css';
+
+/* Custom skeleton container styles */
+.skeleton-card {
+  border-radius: var(--mantine-radius-md);
+}

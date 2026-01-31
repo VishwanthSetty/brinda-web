@@ -8,8 +8,10 @@ interface SchoolCategoriesChartProps {
     onCategoryClick?: (category: string) => void
 }
 
+import { SchoolCategoriesChartSkeleton } from './SchoolCategoriesChartSkeleton'
+
 export function SchoolCategoriesChart({ data, isLoading, onCategoryClick }: SchoolCategoriesChartProps) {
-    if (!data) return null
+    if (isLoading || !data) return <SchoolCategoriesChartSkeleton />
 
     const hot = data.summary.hot_count
     const warm = data.summary.warm_count

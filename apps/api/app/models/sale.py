@@ -14,3 +14,9 @@ class SaleInDB(SaleBase):
     
     class Config:
         populate_by_name = True
+
+    class MongoMeta:
+        collection_name = "sales"
+        indexes = [
+            {"keys": [("created_at", 1)]},
+        ]

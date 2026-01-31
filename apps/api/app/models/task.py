@@ -31,4 +31,9 @@ class TaskInDB(TaskBase):
             {"keys": [("employeeID", 1)]},
             {"keys": [("internalEmpID", 1)]},
             {"keys": [("customEntity.customEntityName", 1)]},
+            # NEW: Compound indexes for analytics queries
+            {"keys": [("checkinTime", 1)]},  # Date range queries
+            {"keys": [("checkinTime", 1), ("employeeID", 1)]},  # Analytics: date + employee
+            {"keys": [("checkinTime", 1), ("internalEmpID", 1)]},  # Analytics: date + internal employee
+            {"keys": [("clientID", 1)]},  # For $lookup joins
         ]

@@ -25,5 +25,19 @@ class ClientInDB(ClientBase):
     class MongoMeta:
         collection_name = "clients"
         indexes = [
-            {"keys": [("ID", 1)]}
+            {"keys": [("ID", 1)]},
+            # NEW: For employee-based queries
+            {"keys": [("Visible To (*)", 1)]},
+            {"keys": [("Employee ID", 1)]},
+            # NEW: For category filtering
+            {"keys": [("Client Catagory (*)", 1)]},
+            # NEW: For area grouping
+            {"keys": [("Division Name new (*)", 1)]},
+            # NEW: Compound for employee + category
+            {"keys": [("Visible To (*)", 1), ("Client Catagory (*)", 1)]},
+            # NEW: For lookup operations (string conversion lookups use this)
+            {"keys": [("unolo_client_id", 1)]},
+            # NEW: Date filtering
+            {"keys": [("Created At", 1)]},
+            {"keys": [("Last Modified At", 1)]},
         ]

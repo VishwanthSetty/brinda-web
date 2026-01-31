@@ -26,3 +26,11 @@ class UserInDB(UserBase):
     
     class Config:
         populate_by_name = True
+
+    class MongoMeta:
+        collection_name = "users"
+        indexes = [
+            {"keys": [("email", 1)], "unique": True},
+            {"keys": [("empId", 1)]},
+            {"keys": [("employeeId", 1)]},
+        ]

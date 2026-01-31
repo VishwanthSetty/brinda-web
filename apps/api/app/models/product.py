@@ -15,3 +15,10 @@ class ProductInDB(ProductBase):
     
     class Config:
         populate_by_name = True
+
+    class MongoMeta:
+        collection_name = "products"
+        indexes = [
+            {"keys": [("created_at", 1)]},
+            {"keys": [("updated_at", 1)]},
+        ]

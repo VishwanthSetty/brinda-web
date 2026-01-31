@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { AreaLeadDistributionBar } from './AreaLeadDistributionBar';
 import { SchoolCategoryResponse, ClientWithLatestTask } from '../../../../types/analytics';
 
+import { AreaLeadDistributionChartSkeleton } from './AreaLeadDistributionChartSkeleton';
+
 interface AreaLeadDistributionChartProps {
     data: SchoolCategoryResponse | null;
     isLoading: boolean;
@@ -13,7 +15,7 @@ export function AreaLeadDistributionChart({
     isLoading,
     onDrillDown
 }: AreaLeadDistributionChartProps & { onDrillDown?: (title: string, data: any[], type: string) => void }) {
-    if (!data) return null;
+    if (isLoading || !data) return <AreaLeadDistributionChartSkeleton />;
 
     // 1. Initialize Aggregation Map
     const areaMap = new Map<string, {

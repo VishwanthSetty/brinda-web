@@ -14,6 +14,8 @@ import { DrillDownData, Task, ClientWithTasks, ClientWithLatestTask, Client } fr
 import { Modal, Table, Text, Badge, TextInput } from '@mantine/core'
 import { ChevronUp, ChevronDown, ChevronsUpDown, Search } from 'lucide-react'
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable, getSortedRowModel, SortingState, getFilteredRowModel } from '@tanstack/react-table'
+import './skeletons.css'
+import { PriorityTasksTableSkeleton } from './components/PriorityTasksTable/PriorityTasksTableSkeleton'
 
 type ViewMode = 'weekly' | 'monthly' | 'custom'
 
@@ -130,6 +132,7 @@ export default function TaskAnalytics() {
                 totalSpecimens={totalSpecimens}
                 onSpecimenClick={handleSpecimenClick}
                 onTotalTasksClick={() => handleDrillDown('All Tasks', tasksQuery.data?.data || [], 'tasks')}
+                isLoading={tasksQuery.isLoading || categoryQuery.isLoading}
             />
 
             {/* Main Grid */}
@@ -160,10 +163,14 @@ export default function TaskAnalytics() {
                     />
                 </Grid.Col>
                 <Grid.Col span={{ base: 12, md: 8 }}>
-                    <PriorityTasksTable
-                        data={priorityTasks}
-                        onViewAll={() => handleDrillDown('Priority Tasks', priorityTasks, 'tasks')}
-                    />
+                    {tasksQuery.isLoading ? (
+                        <PriorityTasksTableSkeleton />
+                    ) : (
+                        <PriorityTasksTable
+                            data={priorityTasks}
+                            onViewAll={() => handleDrillDown('Priority Tasks', priorityTasks, 'tasks')}
+                        />
+                    )}
                 </Grid.Col>
             </Grid>
 

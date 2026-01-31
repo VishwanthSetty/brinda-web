@@ -3,12 +3,15 @@ import { ClipboardList, Flame, BookCopy } from 'lucide-react'
 import { StatCard } from './StatCard'
 import { ProgressCard } from './ProgressCard'
 
+import { StatsHeaderSkeleton } from './StatsHeaderSkeleton'
+
 interface StatsHeaderProps {
     totalTasks: number
     hotLeadsCount: number
     totalLeadsGoal?: number // e.g. 215 weekly goal
     totalSpecimens?: number
     onSpecimenClick?: () => void
+    isLoading?: boolean
 }
 
 export function StatsHeader({
@@ -17,8 +20,11 @@ export function StatsHeader({
     totalLeadsGoal = 215,
     totalSpecimens = 0,
     onSpecimenClick,
-    onTotalTasksClick
+    onTotalTasksClick,
+    isLoading
 }: StatsHeaderProps & { onTotalTasksClick?: () => void }) {
+    if (isLoading) return <StatsHeaderSkeleton />
+
     return (
         <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md" mb="xl">
             <StatCard

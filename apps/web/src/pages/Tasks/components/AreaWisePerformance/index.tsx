@@ -16,8 +16,10 @@ interface AreaWisePerformanceProps {
     onDrillDown: (title: string, data: any, type: string) => void
 }
 
+import { AreaWisePerformanceSkeleton } from './AreaWisePerformanceSkeleton'
+
 export function AreaWisePerformance({ data, clientGroups, isLoading, onDrillDown }: AreaWisePerformanceProps) {
-    if (!data) return null
+    if (isLoading || !data) return <AreaWisePerformanceSkeleton />
 
     const handleDrillDown = (area: string, visitedList: ClientWithTasks[]) => {
         // Prepare data for drilldown
