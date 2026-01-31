@@ -13,7 +13,7 @@ import WhatsAppButton from '../components/common/WhatsAppButton'
 import './PublicLayout.css'
 
 export default function PublicLayout() {
-    const { isAuthenticated, user, logout } = useAuth()
+    const { isAuthenticated, logout } = useAuth()
     const [isOpen, setIsOpen] = useState(false)
 
     const toggleMenu = () => setIsOpen(!isOpen)
