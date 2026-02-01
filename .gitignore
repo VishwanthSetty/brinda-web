@@ -253,3 +253,5 @@ Thumbs.db
 # Vite
 .vite/
 
+
+*.log.*

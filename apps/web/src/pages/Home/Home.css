@@ -5,7 +5,8 @@
     position: relative;
     padding-top: 6rem; /* pt-24 */
     padding-bottom: 3rem; /* pb-12 */
-    background-color: #f9fafb; /* gray-50 */
+    background: url('/assets/hero-bg.png') no-repeat center center;
+    background-size: cover;
     overflow: hidden;
 }
 
@@ -317,7 +318,8 @@
 .hero-overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(to bottom, transparent, rgba(0, 51, 102, 0.9));
+    background: url('/assets/hero-overlay.png') no-repeat center center;
+    background-size: cover;
 }
 
 .float-card-1 {

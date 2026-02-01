@@ -2,18 +2,27 @@ import React, { useState } from 'react';
 import { BOOKS, GRADES } from '../../data/constants';
 import { Book } from '../../data/types';
 import ScrollReveal from '../../components/common/ScrollReveal';
+import BookCover from '../../components/common/BookCover';
 import PdfViewer from '../../components/common/PdfViewer';
-import { Check } from 'lucide-react';
+import { Check, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import './Books.css';
 
 const Books: React.FC = () => {
     const [selectedGrade, setSelectedGrade] = useState<string>('All');
     const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+    const [searchQuery, setSearchQuery] = useState<string>('');
 
-    const filteredBooks = selectedGrade === 'All'
-        ? BOOKS
-        : BOOKS.filter(book => book.grade === selectedGrade);
+    const filteredBooks = BOOKS.filter(book => {
+        const matchesGrade = selectedGrade === 'All' || book.grade === selectedGrade;
+        const searchLower = searchQuery.toLowerCase();
+        const matchesSearch =
+            book.title.toLowerCase().includes(searchLower) ||
+            book.subject.toLowerCase().includes(searchLower) ||
+            book.grade.toLowerCase().includes(searchLower);
+
+        return matchesGrade && matchesSearch;
+    });
 
     return (
         <div className="books-page">
@@ -27,24 +36,39 @@ const Books: React.FC = () => {
             </div>
 
             <div className="container">
-                {/* Filters */}
+                {/* Search and Filters */}
                 <ScrollReveal>
-                    <div className="filters-container">
-                        <button
-                            className={`filter-btn ${selectedGrade === 'All' ? 'active' : ''}`}
-                            onClick={() => setSelectedGrade('All')}
-                        >
-                            All Classes
-                        </button>
-                        {GRADES.map(grade => (
+                    <div className="controls-section">
+                        <div className="search-bar-container">
+                            <div className="search-input-wrapper">
+                                <Search className="search-icon" size={20} />
+                                <input
+                                    type="text"
+                                    placeholder="Search by subject or class..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="search-input"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="filters-container">
                             <button
-                                key={grade}
-                                className={`filter-btn ${selectedGrade === grade ? 'active' : ''}`}
-                                onClick={() => setSelectedGrade(grade)}
+                                className={`filter-btn ${selectedGrade === 'All' ? 'active' : ''}`}
+                                onClick={() => setSelectedGrade('All')}
                             >
-                                {grade}
+                                All Classes
                             </button>
-                        ))}
+                            {GRADES.map(grade => (
+                                <button
+                                    key={grade}
+                                    className={`filter-btn ${selectedGrade === grade ? 'active' : ''}`}
+                                    onClick={() => setSelectedGrade(grade)}
+                                >
+                                    {grade}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </ScrollReveal>
 
@@ -54,7 +78,12 @@ const Books: React.FC = () => {
                         <ScrollReveal key={book.id}>
                             <div className="book-card">
                                 <div className="book-img-wrapper">
-                                    <img src={book.coverImage} alt={book.title} className="book-img" />
+                                    <BookCover
+                                        coverImage={book.coverImage}
+                                        samplePdf={book.samplePdf}
+                                        title={book.title}
+                                        className="book-img"
+                                    />
                                     <span className="book-grade-badge">{book.grade}</span>
                                 </div>
                                 <div className="book-content">

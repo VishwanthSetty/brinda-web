@@ -1,10 +1,21 @@
-import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import SectionHeader from '../../components/common/SectionHeader';
 import ScrollReveal from '../../components/common/ScrollReveal';
 import { Users, Award, Handshake } from 'lucide-react';
 import './SchoolsPublic.css';
 
 const SchoolsPublic: React.FC = () => {
+    const navigate = useNavigate();
+
+    const handleRequestVisit = () => {
+        navigate('/contact', {
+            state: {
+                subject: 'Request for School Visit',
+                message: 'We are interested in your publications and would like to schedule a visit from your academic representative.'
+            }
+        });
+    };
+
     return (
         <div className="schools-public-page">
             <div className="school-hero">
@@ -50,7 +61,7 @@ const SchoolsPublic: React.FC = () => {
                                     Our academic representatives are traveling across Telangana. Book a slot for them to visit your school and showcase our complete range of publications.
                                 </p>
                             </div>
-                            <button className="btn-visit">
+                            <button className="btn-visit" onClick={handleRequestVisit}>
                                 Request School Visit
                             </button>
                         </div>

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import { useLocation } from 'react-router-dom';
 import ScrollReveal from '../../components/common/ScrollReveal';
 import { Mail, Phone, MapPin, Send } from 'lucide-react';
 import './Contact.css';
@@ -7,6 +8,7 @@ import './Contact.css';
 import { submitContactForm } from '../../services/api';
 
 const Contact: React.FC = () => {
+    const location = useLocation();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
@@ -15,6 +17,17 @@ const Contact: React.FC = () => {
         subject: '',
         message: ''
     });
+
+    useEffect(() => {
+        if (location.state) {
+            const { subject, message } = location.state as { subject?: string; message?: string };
+            setFormData(prev => ({
+                ...prev,
+                subject: subject || prev.subject,
+                message: message || prev.message
+            }));
+        }
+    }, [location.state]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

@@ -122,7 +122,7 @@ const Home: React.FC = () => {
                             <ScrollReveal>
                                 <div className="overview-img-wrapper">
                                     <div className="overview-bg-shape"></div>
-                                    <img src="https://picsum.photos/seed/library_study/800/600" alt="Students studying" className="overview-img" />
+                                    <img src="/assets/image1.png" alt="Students studying" className="overview-img" />
                                 </div>
                             </ScrollReveal>
                         </div>

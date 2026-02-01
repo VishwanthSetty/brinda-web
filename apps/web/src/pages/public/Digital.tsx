@@ -54,6 +54,17 @@ const Digital: React.FC = () => {
                                         </div>
                                     </div>
                                 </div>
+                                <div style={{ marginTop: '2.5rem' }}>
+                                    <a
+                                        href="https://learn.brindapublications.com/s/store/courses/Packages"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn-digital-cta"
+                                        style={{ textDecoration: 'none' }}
+                                    >
+                                        <Laptop size={20} /> Explore Digital Content
+                                    </a>
+                                </div>
                             </ScrollReveal>
                         </div>
                         <div>

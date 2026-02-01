@@ -32,6 +32,12 @@ const getGoogleDriveId = (url: string): string | null => {
     return null;
 };
 
+// Define options outside component to prevent unnecessary reloads
+const PDF_OPTIONS = {
+    cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
+    cMapPacked: true,
+};
+
 const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl, onClose, title }) => {
     const googleDriveId = getGoogleDriveId(pdfUrl);
 
@@ -45,6 +51,7 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl, onClose, title }) => {
         setNumPages(numPages);
         setPageNumber(1);
     }
+    // ...
 
     // Intersection Observer for Scroll Mode
     React.useEffect(() => {
@@ -143,6 +150,7 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl, onClose, title }) => {
                             file={pdfUrl}
                             onLoadSuccess={onDocumentLoadSuccess}
                             className="pdf-document"
+                            options={PDF_OPTIONS}
                             loading={<div className="pdf-loading">Loading PDF...</div>}
                             error={<div className="pdf-error">Failed to load PDF. Please check the URL.</div>}
                         >
@@ -151,8 +159,8 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl, onClose, title }) => {
                                     <Page
                                         pageNumber={pageNumber}
                                         scale={scale}
-                                        renderTextLayer={true}
-                                        renderAnnotationLayer={true}
+                                        renderTextLayer={false}
+                                        renderAnnotationLayer={false}
                                     />
                                 ) : (
                                     Array.from(new Array(numPages), (_, index) => (
@@ -169,8 +177,8 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ pdfUrl, onClose, title }) => {
                                             <Page
                                                 pageNumber={index + 1}
                                                 scale={scale}
-                                                renderTextLayer={true}
-                                                renderAnnotationLayer={true}
+                                                renderTextLayer={false}
+                                                renderAnnotationLayer={false}
                                             />
                                         </div>
                                     ))

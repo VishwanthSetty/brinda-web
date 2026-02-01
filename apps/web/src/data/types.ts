@@ -5,10 +5,11 @@ export interface Book {
     title: string;
     subject: string;
     grade: GradeLevel;
-    coverImage: string;
+    coverImage?: string;
     features: string[];
     price: number;
     samplePdf?: string;
+    sampleUrl?: string;
 }
 
 export interface Testimonial {
