@@ -1,22 +1,41 @@
 /**
  * Dashboard Page Component
  * Analytics dashboard for authenticated users
+ * Admin View: Aggregated stats across all employees
  */
 
 import { useState, useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
-import { dashboardApi } from '../services/api'
+import { analyticsApi } from '../services/api'
 import { useAuth } from '../context/AuthContext'
-import type { SalesAnalytics, DashboardSummary } from '../types'
+import type { AdminOverviewResponse } from '../types/analytics'
+import { Container, Grid, Group, Loader, Center, Modal, LoadingOverlay } from '@mantine/core'
+import { DateFilter } from './Tasks/components/DateFilter'
+import { StatCard } from './Tasks/components/StatsHeader/StatCard'
+import { ClipboardList, Flame, BookCopy } from 'lucide-react'
+import dayjs from 'dayjs'
+import { AdminBarChart } from '../components/AdminBarChart'
+import { AdminDrillDownTable } from '../components/AdminDrillDownTable'
+import { useDisclosure } from '@mantine/hooks'
 import './Dashboard.css'
 
 export default function Dashboard() {
     const { user } = useAuth()
-    const [summary, setSummary] = useState<DashboardSummary | null>(null)
-    const [analytics, setAnalytics] = useState<SalesAnalytics | null>(null)
+    const [viewMode, setViewMode] = useState<'weekly' | 'monthly' | 'custom'>('monthly')
+    const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
+        dayjs().startOf('month').toDate(),
+        dayjs().endOf('month').toDate()
+    ])
+
+    const [data, setData] = useState<AdminOverviewResponse | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const [days, setDays] = useState(30)
+
+    // DrillDown State
+    const [drillDownTitle, setDrillDownTitle] = useState('')
+    const [drillDownData, setDrillDownData] = useState<any[]>([])
+    const [isDrillDownLoading, setIsDrillDownLoading] = useState(false)
+    const [opened, { open, close }] = useDisclosure(false)
 
     // Redirect non-admin users
     if (user && user.role !== 'admin') {
@@ -25,47 +44,92 @@ export default function Dashboard() {
 
     useEffect(() => {
         loadDashboardData()
-    }, [days])
+    }, [dateRange])
 
     async function loadDashboardData() {
+        if (!dateRange[0] || !dateRange[1]) return
+
         setLoading(true)
         setError(null)
 
         try {
-            const [summaryData, analyticsData] = await Promise.all([
-                dashboardApi.getSummary(),
-                dashboardApi.getAnalytics(days),
-            ])
-            setSummary(summaryData)
-            setAnalytics(analyticsData)
-        } catch {
+            const startStr = dayjs(dateRange[0]).format('YYYY-MM-DD')
+            const endStr = dayjs(dateRange[1]).format('YYYY-MM-DD')
+
+            const response = await analyticsApi.getAdminOverview(startStr, endStr)
+            setData(response)
+        } catch (err) {
+            console.error(err)
             setError('Failed to load dashboard data. Please try again.')
         } finally {
             setLoading(false)
         }
     }
 
-    function formatCurrency(value: number) {
-        return new Intl.NumberFormat('en-IN', {
-            style: 'currency',
-            currency: 'INR',
-            maximumFractionDigits: 0,
-        }).format(value)
+    const fetchDrillDownData = async (type: string, employeeId?: string) => {
+        if (!dateRange[0] || !dateRange[1]) return
+
+        setIsDrillDownLoading(true)
+        setDrillDownData([])
+        open()
+
+        try {
+            const start = dayjs(dateRange[0]).format('YYYY-MM-DD')
+            const end = dayjs(dateRange[1]).format('YYYY-MM-DD')
+
+            let filterType = undefined
+            if (type === 'hot_schools') filterType = 'hot_schools'
+            if (type === 'specimens') filterType = 'specimens'
+
+            // if type is employee_schools, we need both employeeId AND filterType='hot_schools'
+            if (type === 'employee_schools') filterType = 'hot_schools'
+
+            const response = await analyticsApi.getAdminTasks(start, end, employeeId, filterType)
+            setDrillDownData(response.data || [])
+        } catch (err: any) {
+            console.error(err)
+        } finally {
+            setIsDrillDownLoading(false)
+        }
     }
 
-    if (loading) {
+    // Handlers
+    const handleTotalTasksClick = () => {
+        setDrillDownTitle('All Tasks in Range')
+        fetchDrillDownData('all_tasks')
+    }
+
+    const handleHotSchoolsClick = () => {
+        setDrillDownTitle('All Hot Schools Tasks')
+        fetchDrillDownData('hot_schools')
+    }
+
+    const handleSpecimensClick = () => {
+        setDrillDownTitle('Tasks with Specimens')
+        fetchDrillDownData('specimens')
+    }
+
+    const handleEmployeeTasksClick = (id: string, name: string) => {
+        setDrillDownTitle(`Tasks by ${name}`)
+        fetchDrillDownData('employee_tasks', id)
+    }
+
+    const handleEmployeeSchoolsClick = (id: string, name: string) => {
+        setDrillDownTitle(`Hot Schools by ${name}`)
+        fetchDrillDownData('employee_schools', id)
+    }
+
+    if (loading && !data) {
         return (
-            <div className="dashboard-loading">
-                <div className="loading-spinner"></div>
-                <p>Loading dashboard...</p>
-            </div>
+            <Center style={{ height: '50vh' }}>
+                <Loader />
+            </Center>
         )
     }
 
     if (error) {
         return (
             <div className="dashboard-error">
-                <span className="error-icon">⚠️</span>
                 <p>{error}</p>
                 <button onClick={loadDashboardData} className="btn btn-primary">
                     Retry
@@ -74,161 +138,107 @@ export default function Dashboard() {
         )
     }
 
+    // Transform data for charts
+    const taskChartData = data?.tasks_by_employee.map(e => ({
+        name: e.employee_name,
+        value: e.task_count,
+        id: e.employee_id
+    })) || []
+
+    const schoolChartData = data?.schools_by_employee.map(e => ({
+        name: e.employee_name,
+        value: e.hot_school_count,
+        id: e.employee_id
+    })) || []
+
     return (
-        <div className="dashboard-page">
-            {/* Quick Stats */}
-            <div className="stats-row">
-                <div className="stat-card card">
-                    <div className="stat-icon">📚</div>
-                    <div className="stat-info">
-                        <span className="stat-value">{summary?.total_products || 0}</span>
-                        <span className="stat-label">Total Products</span>
-                    </div>
-                </div>
-                <div className="stat-card card">
-                    <div className="stat-icon">👥</div>
-                    <div className="stat-info">
-                        <span className="stat-value">{summary?.total_users || 0}</span>
-                        <span className="stat-label">Active Users</span>
-                    </div>
-                </div>
-                <div className="stat-card card">
-                    <div className="stat-icon">💰</div>
-                    <div className="stat-info">
-                        <span className="stat-value">{formatCurrency(summary?.today_revenue || 0)}</span>
-                        <span className="stat-label">Today's Revenue</span>
-                    </div>
-                </div>
-                <div className="stat-card card">
-                    <div className="stat-icon">📦</div>
-                    <div className="stat-info">
-                        <span className="stat-value">{summary?.today_orders || 0}</span>
-                        <span className="stat-label">Today's Orders</span>
-                    </div>
-                </div>
-            </div>
+        <Container size="xl" py="lg">
+            {/* Date Filter */}
+            <Group justify="space-between" mb="xl" align="center">
+                <Group>
+                    <DateFilter
+                        view={viewMode}
+                        range={dateRange}
+                        onViewChange={setViewMode}
+                        onRangeChange={setDateRange}
+                    />
+                </Group>
+            </Group>
 
-            {/* Analytics Section */}
-            <div className="analytics-section">
-                <div className="section-header">
-                    <h2>Sales Analytics</h2>
-                    <select
-                        className="form-input period-select"
-                        value={days}
-                        onChange={(e) => setDays(Number(e.target.value))}
-                    >
-                        <option value={7}>Last 7 days</option>
-                        <option value={30}>Last 30 days</option>
-                        <option value={90}>Last 90 days</option>
-                        <option value={365}>Last year</option>
-                    </select>
-                </div>
+            {/* Stats Overview */}
+            <Grid gutter="md" mb="xl">
+                <Grid.Col span={{ base: 12, md: 4 }}>
+                    <div onClick={handleTotalTasksClick} style={{ cursor: 'pointer' }}>
+                        <StatCard
+                            title="Total Tasks"
+                            value={data?.total_tasks || 0}
+                            icon={ClipboardList}
+                            borderColor="teal.7"
+                            iconColor="teal"
+                        />
+                    </div>
+                </Grid.Col>
+                <Grid.Col span={{ base: 12, md: 4 }}>
+                    <div onClick={handleHotSchoolsClick} style={{ cursor: 'pointer' }}>
+                        <StatCard
+                            title="Total Hot Schools"
+                            value={data?.hot_schools_count || 0}
+                            icon={Flame}
+                            borderColor="red.5"
+                            iconColor="red"
+                            badge="Hot"
+                            badgeColor='red'
+                        />
+                    </div>
+                </Grid.Col>
+                <Grid.Col span={{ base: 12, md: 4 }}>
+                    <div onClick={handleSpecimensClick} style={{ cursor: 'pointer' }}>
+                        <StatCard
+                            title="Total Specimens Given"
+                            value={data?.total_specimens || 0}
+                            icon={BookCopy}
+                            borderColor="violet.5"
+                            iconColor="violet"
+                        />
+                    </div>
+                </Grid.Col>
+            </Grid>
 
-                {/* Analytics Summary Cards */}
-                <div className="analytics-summary">
-                    <div className="summary-card card">
-                        <h4>Total Revenue</h4>
-                        <span className="summary-value">
-                            {formatCurrency(analytics?.summary.total_revenue || 0)}
-                        </span>
+            {/* Charts Section */}
+            <Grid gutter="xl">
+                <Grid.Col span={{ base: 12, lg: 6 }}>
+                    <div style={{ height: 500 }}>
+                        <AdminBarChart
+                            title="Tasks Created by Employee"
+                            data={taskChartData}
+                            valueLabel="Tasks"
+                            barColor="#20c997" // teal.5
+                            onBarClick={handleEmployeeTasksClick}
+                            height={450}
+                        />
                     </div>
-                    <div className="summary-card card">
-                        <h4>Total Orders</h4>
-                        <span className="summary-value">
-                            {analytics?.summary.total_orders || 0}
-                        </span>
+                </Grid.Col>
+                <Grid.Col span={{ base: 12, lg: 6 }}>
+                    <div style={{ height: 500 }}>
+                        <AdminBarChart
+                            title="Hot Schools by Employee"
+                            data={schoolChartData}
+                            valueLabel="Hot Schools"
+                            barColor="#ff6b6b" // red.5
+                            onBarClick={handleEmployeeSchoolsClick}
+                            height={450}
+                        />
                     </div>
-                    <div className="summary-card card">
-                        <h4>Units Sold</h4>
-                        <span className="summary-value">
-                            {analytics?.summary.total_quantity || 0}
-                        </span>
-                    </div>
-                    <div className="summary-card card">
-                        <h4>Avg Order Value</h4>
-                        <span className="summary-value">
-                            {formatCurrency(analytics?.summary.average_order_value || 0)}
-                        </span>
-                    </div>
-                </div>
+                </Grid.Col>
+            </Grid>
 
-                {/* Data Tables */}
-                <div className="data-tables">
-                    {/* Sales by Region */}
-                    <div className="data-table card">
-                        <h3>Sales by Region</h3>
-                        {analytics?.by_region.length ? (
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Region</th>
-                                        <th>Orders</th>
-                                        <th>Revenue</th>
-                                        <th>%</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {analytics.by_region.map((region) => (
-                                        <tr key={region.region}>
-                                            <td>{region.region}</td>
-                                            <td>{region.total_orders}</td>
-                                            <td>{formatCurrency(region.total_revenue)}</td>
-                                            <td>
-                                                <div className="progress-bar">
-                                                    <div
-                                                        className="progress-fill"
-                                                        style={{ width: `${region.percentage}%` }}
-                                                    />
-                                                    <span>{region.percentage}%</span>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        ) : (
-                            <p className="no-data">No data available</p>
-                        )}
-                    </div>
-
-                    {/* Top Products */}
-                    <div className="data-table card">
-                        <h3>Top Products</h3>
-                        {analytics?.by_product.length ? (
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Product</th>
-                                        <th>Qty</th>
-                                        <th>Revenue</th>
-                                        <th>%</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {analytics.by_product.map((product) => (
-                                        <tr key={product.product_id}>
-                                            <td className="product-name">{product.product_title}</td>
-                                            <td>{product.total_quantity}</td>
-                                            <td>{formatCurrency(product.total_revenue)}</td>
-                                            <td>
-                                                <div className="progress-bar">
-                                                    <div
-                                                        className="progress-fill"
-                                                        style={{ width: `${product.percentage}%` }}
-                                                    />
-                                                    <span>{product.percentage}%</span>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        ) : (
-                            <p className="no-data">No data available</p>
-                        )}
-                    </div>
+            {/* Drilldown Modal */}
+            <Modal opened={opened} onClose={close} title={drillDownTitle} size="100%" centered>
+                <div style={{ position: 'relative', minHeight: '200px' }}>
+                    <LoadingOverlay visible={isDrillDownLoading} zIndex={100} overlayProps={{ radius: "sm", blur: 2 }} />
+                    {!isDrillDownLoading && <AdminDrillDownTable data={drillDownData} />}
                 </div>
-            </div>
-        </div>
+            </Modal>
+        </Container>
     )
 }

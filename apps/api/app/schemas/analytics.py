@@ -80,3 +80,20 @@ class SchoolCategoryResponse(BaseModel):
     warm: List[ClientWithLatestTask]
     no_info: List[ClientWithLatestTask]
     summary: CategorySummary
+
+class EmployeeTaskStat(BaseModel):
+    employee_id: str
+    employee_name: str
+    task_count: int
+
+class EmployeeSchoolStat(BaseModel):
+    employee_id: str
+    employee_name: str
+    hot_school_count: int
+
+class AdminOverviewResponse(BaseModel):
+    total_tasks: int
+    hot_schools_count: int
+    total_specimens: int
+    tasks_by_employee: List[EmployeeTaskStat]
+    schools_by_employee: List[EmployeeSchoolStat]

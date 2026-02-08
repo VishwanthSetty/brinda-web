@@ -139,3 +139,50 @@ export interface SchoolCategoryResponse {
 export type DrillDownType = 'tasks' | 'area' | 'category';
 
 export type DrillDownData = Task[] | ClientWithTasks[] | ClientWithLatestTask[];
+
+export interface EmployeeTaskStat {
+    employee_id: string;
+    employee_name: string;
+    task_count: number;
+}
+
+export interface EmployeeSchoolStat {
+    employee_id: string;
+    employee_name: string;
+    hot_school_count: number;
+}
+
+export interface AdminOverviewResponse {
+    total_tasks: number;
+    hot_schools_count: number;
+    total_specimens: number;
+    tasks_by_employee: EmployeeTaskStat[];
+    schools_by_employee: EmployeeSchoolStat[];
+}
+
+export interface DailyAnalytics {
+    date: string
+    is_present: boolean
+    tasks_done: number
+    distance_km: number
+    num_breaks: number
+    break_time_minutes: number
+    is_working_day: boolean
+}
+
+export interface EmployeeAnalyticsResponse {
+    employee_id: string
+    employee_name: string
+    total_working_days: number
+    total_present_days: number
+    attendance_percentage: number
+    total_tasks: number
+    avg_tasks_per_day: number
+    total_distance_km: number
+    avg_distance_per_day: number
+    total_breaks: number
+    avg_breaks_per_day: number
+    total_break_time_minutes: number
+    avg_break_time_minutes: number
+    daily_breakdown: DailyAnalytics[]
+}

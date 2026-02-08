@@ -9,11 +9,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.database import db_manager
-from app.routes import auth, products, dashboard, clients, employees, tasks, analytics, webhooks, contact
+from app.routes import auth, products, dashboard, clients, employees, tasks, analytics, webhooks, contact, eod_summary, attendance, sync, emp_analytics, all_emp_analytics
 
 from app.models.employee import Employee
 from app.models.client import ClientInDB
 from app.models.task import TaskInDB
+from app.models.eod_summary import EodSummaryInDB
+from app.models.attendance import AttendanceInDB
 
 # ...
 
@@ -25,7 +27,7 @@ async def lifespan(app: FastAPI):
     # Startup
     await db_manager.connect()
     # Auto-create indexes based on model definitions
-    await db_manager.ensure_indexes([Employee, ClientInDB, TaskInDB])
+    await db_manager.ensure_indexes([Employee, ClientInDB, TaskInDB, EodSummaryInDB, AttendanceInDB])
     yield
     # Shutdown
     await db_manager.disconnect()
@@ -88,9 +90,13 @@ def create_app() -> FastAPI:
     app.include_router(employees.router, prefix="/api/employees", tags=["Employees"])
     app.include_router(tasks.router, prefix="/api/tasks", tags=["Tasks"])
     app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
-    app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
     app.include_router(webhooks.router, prefix="/api/webhooks", tags=["Webhooks"])
     app.include_router(contact.router, prefix="/api/contact", tags=["Contact"])
+    app.include_router(eod_summary.router, prefix="/api/eod-summary", tags=["EOD Summary"])
+    app.include_router(attendance.router, prefix="/api/attendance", tags=["Attendance"])
+    app.include_router(sync.router, prefix="/api/sync", tags=["Sync"])
+    app.include_router(emp_analytics.router, prefix="/api/emp-analytics", tags=["Employee Analytics"])
+    app.include_router(all_emp_analytics.router, prefix="/api/all-emp-analytics", tags=["All Employees Analytics"])
     
     return app
 

@@ -7,6 +7,7 @@ from typing import Optional, Tuple, List, Dict
 from app.repository.client_repository import client_repository
 from app.repository.task_repository import task_repository
 from app.schemas.client import Client
+from app.schemas.task import Task
 from app.schemas.analytics import (
     ClientCategoryFilter, 
     GroupByField, 
@@ -14,7 +15,8 @@ from app.schemas.analytics import (
     TaskAnalyticsResponse,
     AreaWiseTasksResponse,
     SchoolCategoryResponse,
-    CategorySummary
+    CategorySummary,
+    AdminOverviewResponse
 )
 from app.services.employee import get_all_employees
 
@@ -24,6 +26,28 @@ CLIENT_CATEGORY_FIELD = "Client Catagory (*)"
 GROUP_FIELD_MAPPING = {
     GroupByField.AREA_WISE: "Division Name new (*)",
     GroupByField.MATERIAL: "Using Material (*)"
+}
+
+
+# Default data for unknown/deleted clients
+UNKNOWN_CLIENT_DATA = {
+    "Client Name (*)": "Unknown Client",
+    "Visible To (*)": "Admin",
+    "Contact Name (*)": "Unknown",
+    "Country Code (*)": "+91",
+    "Contact Number (*)": "0000000000",
+    "Address (*)": "Unknown",
+    "Can exec change location (*)": False,
+    "Latitude": 0.0,
+    "Longitude": 0.0,
+    "Radius(m)": 0.0,
+    "Otp Verified": False,
+    "Client Catagory (*)": "Unknown",
+    "Division Name new (*)": "Unknown",
+    "Using Material (*)": "Unknown",
+    "Using IIT (*)": "No",
+    "Using AI (*)": "No",
+    "To Delete": False
 }
 
 async def get_clients_for_employee(
@@ -93,6 +117,12 @@ async def get_all_tasks_for_employee(
         client_category=category_val
     )
     
+    # Handle missing clients
+    for task in tasks:
+        if not task.client and task.client_id:
+            task.client = Client(**UNKNOWN_CLIENT_DATA)
+            task.client.unolo_client_id = task.client_id
+            
     return {"data": tasks, "total": len(tasks)}
 
 async def get_area_wise_tasks_with_clients(
@@ -122,36 +152,28 @@ async def get_area_wise_tasks_with_clients(
         client_category=category_val
     )
     
+    # Handle missing areas/clients
+    if None in area_stats:
+        area_stats["Unknown Area"] = area_stats.pop(None)
+        
+    for area, stats in area_stats.items():
+        for client_info in stats["clients_with_tasks"]:
+             if not client_info.get("client_name"):
+                 client_info["client_name"] = "Unknown Client"
+                 
     total_unique_clients = sum(s["unique_clients"] for s in area_stats.values())
     total_tasks = sum(
         sum(item["task_count"] for item in s["clients_with_tasks"]) 
         for s in area_stats.values()
     )
     
-    # We are missing "total_clients_in_area" (total existing clients regardless of tasks)
-    # The requirement asks for "total clients in that area".
-    # This requires a separate aggregation on ClientRepository to get total clients per area for this employee.
-    # Note: This might be expensive if many areas.
-    
-    # Get all clients for employee to count totals per area
-    # Or reuse existing get_clients_grouped with AREA_WISE
-    # But wait, get_clients_grouped returns dict of clients.
-    
-    # Ideally we'd do a quick count aggregation in ClientRepository, but reusing existing might be easiest for now
+    # Aggregation for total clients in area
     _, _, _ = await get_clients_grouped(resolved_id, GroupByField.AREA_WISE, None)
-    # Actually let's just make a specific call or optimize later.
-    # For now, let's fetch all clients grouped by area to get totals
-    # We only care about areas that appear in the task list OR all areas?
-    # Usually "total clients in that area" implies context of the area shown.
     
-    # Let's get total clients per area for the employee
     grouped_clients, _, _ = await client_repository.aggregate_clients_grouped(
         employee_id=resolved_id,
         group_field=GROUP_FIELD_MAPPING[GroupByField.AREA_WISE],
-        client_category=None # Total clients regardless of category? or same filter?
-        # Requirement: "get tasks for area wise visited unique clients along with total clients in that area"
-        # It's ambiguous if total clients should also filtered by category.
-        # Assuming YES to be consistent.
+        client_category=None 
     )
     
     # Update area_stats with total_clients_in_area
@@ -159,6 +181,7 @@ async def get_area_wise_tasks_with_clients(
         total_in_area = 0
         if area in grouped_clients:
             total_in_area = len(grouped_clients[area])
+            
         stats["total_clients_in_area"] = total_in_area
         
     return {
@@ -185,6 +208,10 @@ async def get_clients_by_school_category(
         client_category=category_val
     )
     
+    # Ensure missing client tasks land in NoInfo or handled
+    # The aggregation might already put them in NoInfo if category is missing
+    # We can check specific buckets if needed, but assuming aggregation handles null category -> NoInfo
+    
     hot_count = len(results["Hot"])
     cold_count = len(results["Cold"])
     warm_count = len(results["Warm"])
@@ -204,3 +231,107 @@ async def get_clients_by_school_category(
             "total": total
         }
     }
+
+async def get_admin_dashboard_overview(
+    start_date: date,
+    end_date: date
+) -> "AdminOverviewResponse":
+    """
+    Get admin dashboard overview with aggregated stats and per-employee breakdowns.
+    """
+    # 1. Fetch all tasks in date range for total counts and specimen calc
+    all_tasks = await task_repository.find_all_tasks_in_date_range(start_date, end_date)
+    
+    total_tasks = len(all_tasks)
+    
+    # Calculate total specimens
+    total_specimens = 0
+    for task in all_tasks:
+        if task.metadata:
+            # metadata is a dict, use .get()
+            specimens = task.metadata.get("specimensGiven")
+            if specimens:
+                try:
+                    val = int(specimens)
+                    total_specimens += val
+                except (ValueError, TypeError):
+                    pass
+
+    # 2. Fetch Aggregated Task Counts by Employee
+    task_counts = await task_repository.aggregate_tasks_by_employee(start_date, end_date)
+    # Map to dict for easy lookup
+    task_map = {item["_id"]: item["count"] for item in task_counts if item["_id"]}
+    
+    # 3. Fetch Hot Schools Counts by Employee
+    hot_school_counts = await task_repository.get_hot_schools_by_employee(start_date, end_date)
+    # Map to dict
+    hot_school_map = {item["_id"]: item["count"] for item in hot_school_counts if item["_id"]}
+    
+    total_hot_schools = sum(item["count"] for item in hot_school_counts)
+    
+    # 4. Get all employees to resolve names
+    employees = await get_all_employees()
+    
+    # Build response lists
+    tasks_by_employee = []
+    schools_by_employee = []
+    
+    for emp in employees:
+        eid = str(emp.get("employeeID", ""))
+        name = emp.get("empName", "Unknown")
+        
+        # Task Count using employeeID
+        count = task_map.get(eid, 0)
+        
+        if count > 0:
+            tasks_by_employee.append({
+                "employee_id": eid,
+                "employee_name": name,
+                "task_count": count
+            })
+            
+        # Hot School Count
+        hot_count = hot_school_map.get(eid, 0)
+        if hot_count > 0:
+            schools_by_employee.append({
+                "employee_id": eid,
+                "employee_name": name,
+                "hot_school_count": hot_count
+            })
+            
+    # Sort by count descending
+    tasks_by_employee.sort(key=lambda x: x["task_count"], reverse=True)
+    schools_by_employee.sort(key=lambda x: x["hot_school_count"], reverse=True)
+    
+    return {
+        "total_tasks": total_tasks,
+        "hot_schools_count": total_hot_schools,
+        "total_specimens": total_specimens,
+        "tasks_by_employee": tasks_by_employee,
+        "schools_by_employee": schools_by_employee
+    }
+
+async def get_admin_tasks_drilldown(
+    start_date: date,
+    end_date: date,
+    employee_id: Optional[str] = None,
+    filter_type: Optional[str] = None
+) -> TaskAnalyticsResponse:
+    """
+    Get detailed tasks for admin drill-down.
+    """
+    tasks_raw = await task_repository.find_all_tasks_with_clients(start_date, end_date, employee_id, filter_type)
+    
+    # Map to schemas
+    data = []
+    for t in tasks_raw:
+        if not t.client and t.client_id:
+             t.client = Client(**UNKNOWN_CLIENT_DATA)
+             t.client.unolo_client_id = t.client_id
+             
+        data.append(Task(**t.dict(by_alias=True)))
+        
+    return TaskAnalyticsResponse(
+        total=len(data),
+        data=data
+    )

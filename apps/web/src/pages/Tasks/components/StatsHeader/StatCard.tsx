@@ -34,7 +34,7 @@ export function StatCard({
                 cursor: onClick ? 'pointer' : 'default'
             }}
             onClick={onClick}>
-            <Group justify="space-between" align="flex-start">
+            <Group justify="space-between" align="flex-start" wrap="nowrap">
                 <Stack gap="xs">
                     <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
                         {title}

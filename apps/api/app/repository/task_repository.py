@@ -429,5 +429,201 @@ class TaskRepository:
                 
         return results
 
+    async def find_all_tasks_in_date_range(
+        self,
+        start_date: date,
+        end_date: date
+    ) -> List[TaskInDB]:
+        """
+        Find all tasks within date range (no employee filter).
+        """
+        start_dt = datetime(start_date.year, start_date.month, start_date.day, tzinfo=timezone.utc)
+        end_dt = datetime(end_date.year, end_date.month, end_date.day, 23, 59, 59, tzinfo=timezone.utc)
+        
+        cursor = self.collection.find({
+            "checkinTime": {"$gte": start_dt, "$lte": end_dt}
+        })
+        
+        tasks = []
+        async for doc in cursor:
+            if "_id" in doc:
+                doc["_id"] = str(doc["_id"])
+            tasks.append(TaskInDB(**doc))
+            
+        return tasks
+
+    async def aggregate_tasks_by_employee(
+        self,
+        start_date: date,
+        end_date: date
+    ) -> List[Dict[str, Any]]:
+        """
+        Group tasks by employeeID and count them.
+        Returns: List of {employee_id: str, count: int}
+        """
+        start_dt = datetime(start_date.year, start_date.month, start_date.day, tzinfo=timezone.utc)
+        end_dt = datetime(end_date.year, end_date.month, end_date.day, 23, 59, 59, tzinfo=timezone.utc)
+        
+        pipeline = [
+            {"$match": {"checkinTime": {"$gte": start_dt, "$lte": end_dt}}},
+            {
+                "$group": {
+                    "_id": "$employeeID", # Group by Unolo EmployeeID (or internalEmpID if consistent)
+                    "count": {"$sum": 1}
+                }
+            }
+        ]
+        
+        cursor = self.collection.aggregate(pipeline)
+        return await cursor.to_list(length=None)
+
+    async def get_hot_schools_by_employee(
+        self,
+        start_date: date,
+        end_date: date
+    ) -> List[Dict[str, Any]]:
+        """
+        Get unique schools with 'Hot' category from latest task in range.
+        Grouped by the employee who performed that latest task.
+        """
+        start_dt = datetime(start_date.year, start_date.month, start_date.day, tzinfo=timezone.utc)
+        end_dt = datetime(end_date.year, end_date.month, end_date.day, 23, 59, 59, tzinfo=timezone.utc)
+        
+        pipeline = [
+            # 1. Match tasks in range
+            {"$match": {"checkinTime": {"$gte": start_dt, "$lte": end_dt}}},
+            
+            # 2. Sort latest first
+            {"$sort": {"checkinTime": -1}},
+            
+            # 3. Group by Client to get latest task
+            {
+                "$group": {
+                    "_id": "$clientID",
+                    "latest_task": {"$first": "$$ROOT"}
+                }
+            },
+            
+            # 4. Project school category
+            {
+                "$project": {
+                    "employeeID": "$latest_task.employeeID",
+                    "school_category": {
+                        "$ifNull": [
+                            {"$arrayElemAt": ["$latest_task.metadata.schoolCategory", 0]},
+                            "$latest_task.metadata.schoolCategory",
+                            "NoInfo"
+                        ]
+                    }
+                }
+            },
+            
+            # 5. Filter for 'Hot'
+            {"$match": {"school_category": "Hot"}},
+            
+            # 6. Group by Employee
+            {
+                "$group": {
+                    "_id": "$employeeID",
+                    "count": {"$sum": 1}
+                }
+            }
+        ]
+        
+        cursor = self.collection.aggregate(pipeline)
+        return await cursor.to_list(length=None)
+
+    async def find_all_tasks_with_clients(
+        self,
+        start_date: date,
+        end_date: date,
+        employee_id: Optional[str] = None,
+        filter_type: Optional[str] = None
+    ) -> List[TaskInDB]:
+        """
+        Find tasks with client lookup, optionally filtered by employee and type.
+        Used for admin drill-down.
+        """
+        start_dt = datetime(start_date.year, start_date.month, start_date.day, tzinfo=timezone.utc)
+        end_dt = datetime(end_date.year, end_date.month, end_date.day, 23, 59, 59, tzinfo=timezone.utc)
+        
+        match_stage = {"checkinTime": {"$gte": start_dt, "$lte": end_dt}}
+        
+        if employee_id:
+            match_stage["$or"] = [
+                {"employeeID": employee_id},
+                {"internalEmpID": employee_id}
+            ]
+            
+        pipeline = [
+            {"$match": match_stage},
+            {"$sort": {"checkinTime": -1}}
+        ]
+        
+        if filter_type == 'specimens':
+             pipeline.append({
+                 "$match": {
+                     "$and": [
+                         {"metadata.specimensGiven": {"$exists": True}},
+                         {"metadata.specimensGiven": {"$ne": "0"}},
+                         {"metadata.specimensGiven": {"$ne": 0}},
+                         {"metadata.specimensGiven": {"$ne": ""}}
+                     ]
+                 }
+             })
+        elif filter_type == 'hot_schools':
+             pipeline.append({
+                 "$match": {
+                     "metadata.schoolCategory": "Hot"
+                 }
+             })
+             
+        pipeline.extend([
+            {
+                "$lookup": {
+                    "from": "clients",
+                    "let": {"cid": "$clientID"},
+                    "pipeline": [
+                        {"$match": {
+                            "$expr": {
+                                "$or": [
+                                    {"$eq": ["$unolo_client_id", "$$cid"]},
+                                    {"$eq": [{"$toString": "$unolo_client_id"}, "$$cid"]},
+                                    {"$eq": ["$ID", "$$cid"]},
+                                    {"$eq": [{"$toString": "$ID"}, "$$cid"]},
+                                    {"$eq": [{"$toString": "$_id"}, "$$cid"]}
+                                ]
+                            }
+                        }}
+                    ],
+                    "as": "client"
+                }
+            },
+            {
+                "$unwind": {
+                    "path": "$client",
+                    "preserveNullAndEmptyArrays": True
+                }
+            }
+        ])
+        
+        cursor = self.collection.aggregate(pipeline)
+        
+        tasks = []
+        async for doc in cursor:
+            try:
+                if "_id" in doc:
+                    doc["_id"] = str(doc["_id"])
+                if "client" in doc and doc["client"]:
+                    if "_id" in doc["client"]:
+                        doc["client"]["_id"] = str(doc["client"]["_id"])
+                
+                tasks.append(TaskInDB(**doc))
+            except Exception as e:
+                print(f"Error validating task in admin drill-down: {e}")
+                continue
+                
+        return tasks
+
 # Global instance
 task_repository = TaskRepository()
