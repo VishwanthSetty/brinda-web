@@ -9,7 +9,6 @@ export interface Book {
     features: string[];
     price: number;
     samplePdf?: string;
-    sampleUrl?: string;
 }
 
 export interface Testimonial {

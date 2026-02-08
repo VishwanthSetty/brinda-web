@@ -210,6 +210,82 @@ class UnoloClient:
         
         return []
 
+    # ==================== EOD Summary Endpoints ====================
+
+    async def get_eod_summary(
+        self, 
+        start: str, 
+        end: str
+    ) -> List[Dict[str, Any]]:
+        """
+        Get EOD summary from Unolo API.
+        
+        Args:
+            start: Start date (YYYY-MM-DD)
+            end: End date (YYYY-MM-DD)
+            
+        Returns:
+            List of EOD summary dictionaries
+        """
+        params = {
+            "start": start,
+            "end": end
+        }
+        
+        response = await self._request("GET", "/api/protected/eodSummary", params=params)
+        
+        if isinstance(response, list):
+            return response
+        elif isinstance(response, dict):
+            return response.get("data") or response.get("summary") or response.get("result") or []
+        
+        return []
+
+    # ==================== Attendance Endpoints ====================
+
+    async def get_attendance(
+        self,
+        start: str,
+        end: str
+    ) -> Dict[str, Any]:
+        """
+        Get attendance data from Unolo API.
+        
+        Args:
+            start: Start date (YYYY-MM-DD)
+            end: End date (YYYY-MM-DD)
+            
+        Returns:
+            Dictionary with attendance details
+        """
+        params = {
+            "start": start,
+            "end": end
+        }
+        
+        response = await self._request("GET", "/api/protected/getAttendance", params=params)
+
+        # Response seems to be a single object based on the user request example.
+        # But commonly Unolo returns wrapped responses.
+        # The user example shows a direct object, but often it might be in a list if range > 1 day?
+        # The user provided example shows a single object for "totalDays": 2, "date": "2026-01-22".
+        # This implies it might return a list if multiple employees or just one object if filtered?
+        # Actually, looking at the user payload, it looks like a single object describing one employee's stats.
+        # However, the user request says ?start=...&end=...
+        # Let's assume it returns whatever the API returns, usually a dict or list.
+        # For safety, I'll return Any (typed as Dict[str, Any] in signature but might be List).
+        # Wait, if I look at the previous methods, I am extracting data/result.
+        # The user provided JSON is a bare object.
+        # Let's just return the response directly if it looks like the target object, or extract if wrapped.
+        
+        if isinstance(response, dict):
+             # Check if it's wrapped
+            if "data" in response or "result" in response:
+                 return response.get("data") or response.get("result")
+            return response
+            
+        return response
+
 
 # Factory function for dependency injection
 async def get_unolo_client() -> UnoloClient:

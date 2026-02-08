@@ -3,13 +3,13 @@
  * Layout wrapper for protected dashboard pages with sidebar
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import EmployeeSelector from '../components/EmployeeSelector'
-import { authApi, clientsApi, tasksApi } from '../services/api'
-import { Button, Menu, Modal, PasswordInput, Stack } from '@mantine/core'
+import { authApi, clientsApi, tasksApi, attendanceApi, eodSummaryApi } from '../services/api'
+import { Button, Menu, Modal, PasswordInput, Stack, SegmentedControl } from '@mantine/core'
 import {
     LayoutDashboard,
     BarChart2,
@@ -22,7 +22,10 @@ import {
     School,
     Truck,
     ChevronRight,
-    TrendingUp
+    TrendingUp,
+    Search,
+    Bell,
+    LogOut
 } from 'lucide-react'
 import './DashboardLayout.css'
 
@@ -35,7 +38,7 @@ interface NavItem {
 
 const adminNavItems: NavItem[] = [
     { path: '/dashboard', label: 'Overview', icon: <LayoutDashboard size={20} /> },
-    { path: '/dashboard/analytics', label: 'Analytics', icon: <TrendingUp size={20} /> },
+    { path: '/dashboard/all-employees', label: 'All Employees Details', icon: <Users size={20} /> },
     {
         label: 'Clients',
         icon: <Users size={20} />,
@@ -48,6 +51,7 @@ const adminNavItems: NavItem[] = [
         label: 'Employees',
         icon: <User size={20} />,
         children: [
+            { path: '/dashboard/analytics', label: 'Employee Analytics', icon: <TrendingUp size={20} /> },
             { path: '/dashboard/employee-statistics', label: 'Statistics', icon: <BarChart2 size={20} /> },
             { path: '/dashboard/employees', label: 'All Employees', icon: <ClipboardList size={20} /> },
             { path: '/dashboard/employee-tasks', label: 'Tasks', icon: <Map size={20} /> },
@@ -68,14 +72,41 @@ const salesRepNavItems: NavItem[] = [
     },
 ]
 
+const managerNavItems: NavItem[] = [
+    { path: '/dashboard/tasks', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
+    {
+        label: 'Employees', icon: <User size={20} />,
+        children: [
+            { path: '/dashboard/all-employees', label: 'All Employees Details', icon: <Users size={20} /> },
+            { path: '/dashboard/analytics', label: 'Employee Analytics', icon: <TrendingUp size={20} /> },
+        ]
+    },
+    {
+        label: 'Clients',
+        icon: <Users size={20} />,
+        children: [
+            { path: '/dashboard/clients/schools', label: 'Schools', icon: <School size={20} /> },
+            { path: '/dashboard/clients/distributor', label: 'Distributor', icon: <Truck size={20} /> },
+        ]
+    },
+]
+
 export default function DashboardLayout() {
     const { user, logout } = useAuth()
     const location = useLocation()
     const navigate = useNavigate()
     const [expandedItems, setExpandedItems] = useState<string[]>(['Clients', 'Employees'])
     const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null)
+    const [viewMode, setViewMode] = useState<string>('admin')
     const [isSyncing, setIsSyncing] = useState(false)
     const [syncStatus, setSyncStatus] = useState<string>('')
+
+    // Reset view mode when user role changes or initially loads being admin
+    useEffect(() => {
+        if (user?.role === 'admin') {
+            setViewMode('admin')
+        }
+    }, [user?.role])
 
     const handleLogout = () => {
         logout()
@@ -100,8 +131,10 @@ export default function DashboardLayout() {
 
     const getNavItems = (): NavItem[] => {
         if (!user) return []
-        if (user.role === 'admin') return adminNavItems
-        if (user.role === 'sales_rep' || user.role === 'manager') return salesRepNavItems
+        const currentRole = user.role === 'admin' ? viewMode : user.role
+        if (currentRole === 'admin') return adminNavItems
+        if (currentRole === 'manager') return managerNavItems
+        if (currentRole === 'sales_rep') return salesRepNavItems
         return []
     }
 
@@ -121,11 +154,8 @@ export default function DashboardLayout() {
             }
             clientRes = await clientsApi.syncClients()
 
-            // 2. Sync Tasks (29 days batch, 2 months back)
-            setSyncStatus('Syncing Tasks...')
-
+            // Date range for syncing Tasks, Attendance, EOD Summary
             const today = new Date()
-            // 2 months ago
             const startDateLimit = new Date()
             startDateLimit.setMonth(today.getMonth() - 2)
 
@@ -133,6 +163,11 @@ export default function DashboardLayout() {
             const endLimit = new Date(today)
 
             let totalTasks = 0
+            let totalAttendance = 0
+            let totalEodSummary = 0
+
+            // 2. Sync Tasks (29 days batch, 2 months back)
+            setSyncStatus('Syncing Tasks...')
 
             // We iterate in 29 day chunks from start limit to today
             while (currentStart < endLimit) {
@@ -159,8 +194,59 @@ export default function DashboardLayout() {
                 currentStart.setDate(currentStart.getDate() + 1)
             }
 
-            toast.success(`Sync Complete\nClients Processed: ${clientRes.total_processed
-                }\nTasks Processed: ${totalTasks}`)
+            // 3. Sync Attendance (29 days batch, 2 months back)
+            setSyncStatus('Syncing Attendance...')
+            currentStart = new Date(startDateLimit)
+
+            while (currentStart < endLimit) {
+                const batchEnd = new Date(currentStart)
+                batchEnd.setDate(batchEnd.getDate() + 29)
+
+                const finalEnd = batchEnd > endLimit ? endLimit : batchEnd
+
+                const startStr = currentStart.toISOString().split('T')[0]
+                const endStr = finalEnd.toISOString().split('T')[0]
+
+                setSyncStatus(`Syncing Attendance: ${startStr} to ${endStr}`)
+
+                const attendanceRes = await attendanceApi.sync({
+                    start: startStr,
+                    end: endStr,
+                })
+
+                totalAttendance += attendanceRes.created + attendanceRes.updated
+
+                currentStart = new Date(finalEnd)
+                currentStart.setDate(currentStart.getDate() + 1)
+            }
+
+            // 4. Sync EOD Summary (29 days batch, 2 months back)
+            setSyncStatus('Syncing EOD Summary...')
+            currentStart = new Date(startDateLimit)
+
+            while (currentStart < endLimit) {
+                const batchEnd = new Date(currentStart)
+                batchEnd.setDate(batchEnd.getDate() + 29)
+
+                const finalEnd = batchEnd > endLimit ? endLimit : batchEnd
+
+                const startStr = currentStart.toISOString().split('T')[0]
+                const endStr = finalEnd.toISOString().split('T')[0]
+
+                setSyncStatus(`Syncing EOD Summary: ${startStr} to ${endStr}`)
+
+                const eodRes = await eodSummaryApi.sync({
+                    start: startStr,
+                    end: endStr,
+                })
+
+                totalEodSummary += eodRes.created + eodRes.updated
+
+                currentStart = new Date(finalEnd)
+                currentStart.setDate(currentStart.getDate() + 1)
+            }
+
+            toast.success(`Sync Complete\nClients: ${clientRes.total_processed}\nTasks: ${totalTasks}\nAttendance: ${totalAttendance}\nEOD Summary: ${totalEodSummary}`)
 
         } catch (error: any) {
             console.error(error)
@@ -308,36 +394,15 @@ export default function DashboardLayout() {
                     {navItems.map(renderNavItem)}
                 </nav>
 
-                <div className="sidebar-footer">
-                    <Menu shadow="md" width={200} position="right-end">
-                        <Menu.Target>
-                            <div className="user-info" style={{ cursor: 'pointer' }}>
-                                <div className="user-avatar">
-                                    {user?.full_name?.[0]?.toUpperCase() || 'U'}
-                                </div>
-                                <div className="user-details">
-                                    <span className="user-name">{user?.full_name}</span>
-                                    <span className="user-role">{user?.role}</span>
-                                </div>
-                            </div>
-                        </Menu.Target>
-
-                        <Menu.Dropdown>
-                            <Menu.Label>Account</Menu.Label>
-                            <Menu.Item leftSection={<User size={14} />} onClick={() => setPasswordModalOpen(true)}>
-                                Change Password
-                            </Menu.Item>
-                            <Menu.Divider />
-                            <Menu.Item
-                                color="red"
-                                leftSection={<Upload size={14} style={{ transform: 'rotate(90deg)' }} />} // Using upload icon rotated as logout or just use text
-                                onClick={handleLogout}
-                            >
-                                Logout
-                            </Menu.Item>
-                        </Menu.Dropdown>
-                    </Menu>
-
+                <div className="sidebar-footer" style={{ marginTop: 'auto', padding: '1rem' }}>
+                    <div
+                        className="sidebar-link"
+                        onClick={handleLogout}
+                        style={{ cursor: 'pointer', color: '#fa5252' }}
+                    >
+                        <span className="sidebar-icon"><LogOut size={20} /></span>
+                        <span className="sidebar-label">Logout</span>
+                    </div>
                 </div>
             </aside>
 
@@ -345,21 +410,56 @@ export default function DashboardLayout() {
             <div className="dashboard-main">
                 {/* Top Bar */}
                 <header className="dashboard-header glass">
-                    {user?.role === 'manager' && (
-                        <EmployeeSelector
-                            selectedId={selectedEmployee}
-                            onSelect={setSelectedEmployee}
-                        />
-                    )}
-                    <h1 className="dashboard-title">
-                        {(() => {
-                            const activeCustomItem = navItems
-                                .flatMap(item => item.children ? item.children : [item])
-                                .find(item => item.path === location.pathname);
-                            return activeCustomItem?.label || 'Dashboard';
-                        })()}
-                    </h1>
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <div className="header-left">
+                        <h1 className="dashboard-title">
+                            {(() => {
+                                const activeCustomItem = navItems
+                                    .flatMap(item => item.children ? item.children : [item])
+                                    .find(item => item.path === location.pathname);
+                                return activeCustomItem?.label || 'Dashboard';
+                            })()}
+                        </h1>
+                        <p className="dashboard-subtitle">Brinda Publications Employee Analytics</p>
+                    </div>
+
+                    <div className="header-right">
+                        {/* Search Bar */}
+                        <div className="header-search">
+                            <Search size={18} className="search-icon" />
+                            <input type="text" placeholder="Search..." className="search-input" />
+                        </div>
+
+                        {/* Admin View Toggle */}
+                        {user?.role === 'admin' && (
+                            <SegmentedControl
+                                value={viewMode}
+                                onChange={(value) => {
+                                    setViewMode(value)
+                                    if (value === 'admin') {
+                                        navigate('/dashboard')
+                                    } else {
+                                        navigate('/dashboard/tasks')
+                                    }
+                                }}
+                                data={[
+                                    { label: 'Admin View', value: 'admin' },
+                                    { label: 'Manager View', value: 'manager' }
+                                ]}
+                                size="xs"
+                                radius="xl"
+                                style={{ marginRight: '1rem' }}
+                            />
+                        )}
+
+                        {/* Employee Selector (Manager only or Admin in Manager View) */}
+                        {(user?.role === 'manager' || (user?.role === 'admin' && viewMode === 'manager')) && (
+                            <EmployeeSelector
+                                selectedId={selectedEmployee}
+                                onSelect={setSelectedEmployee}
+                            />
+                        )}
+
+                        {/* Sync Button */}
                         {(user?.role === 'admin' || user?.role === 'manager') && (
                             <Button
                                 onClick={handleSyncUnolo}
@@ -367,13 +467,46 @@ export default function DashboardLayout() {
                                 size="sm"
                                 variant="light"
                                 color="blue"
+                                className="sync-btn"
                             >
                                 {isSyncing ? syncStatus : 'Sync Unolo'}
                             </Button>
                         )}
-                        <Link to="/" className="back-link">
-                            ← Back to Website
-                        </Link>
+
+                        {/* Notification Bell */}
+                        <button className="header-icon-btn">
+                            <Bell size={20} />
+                        </button>
+
+                        {/* User Profile Menu */}
+                        <Menu shadow="md" width={200} position="bottom-end">
+                            <Menu.Target>
+                                <div className="header-user-profile">
+                                    <div className="text-right hidden md:block">
+                                        <div className="user-name">{user?.full_name}</div>
+                                        <div className="user-role">{user?.role}</div>
+                                    </div>
+                                    <div className="user-avatar">
+                                        {user?.full_name?.[0]?.toUpperCase() || 'U'}
+                                    </div>
+                                </div>
+                            </Menu.Target>
+
+                            <Menu.Dropdown>
+                                <Menu.Label>Account</Menu.Label>
+                                <Menu.Item leftSection={<User size={14} />} onClick={() => setPasswordModalOpen(true)}>
+                                    Change Password
+                                </Menu.Item>
+                                <Menu.Divider />
+                                <Menu.Item
+                                    color="red"
+                                    leftSection={<Upload size={14} style={{ transform: 'rotate(90deg)' }} />}
+                                    onClick={handleLogout}
+                                >
+                                    Logout
+                                </Menu.Item>
+                            </Menu.Dropdown>
+                        </Menu>
                     </div>
                 </header>
 

@@ -76,4 +76,153 @@ class UnoloClientResponse(BaseModel):
 
     class Config:
         populate_by_name = True
-        extra = "ignore" 
+        extra = "ignore"
+
+
+class UnoloEodSummaryResponse(BaseModel):
+    """
+    Schema for Unolo EOD Summary response.
+    """
+    employee_id: int = Field(..., alias="employeeID")
+    internal_emp_id: Optional[str] = Field(None, alias="internalEmpID")
+    date: str
+    attendance_result_code: int = Field(..., alias="attendanceResultCode")
+    first_sign_in: Optional[str] = Field(None, alias="firstSignIn")
+    last_sign_out: Optional[str] = Field(None, alias="lastSignOut")
+    total_client_visits: int = Field(..., alias="totalClientVisits")
+    total_num_photos: Optional[int] = Field(None, alias="totalNumPhotos")
+    total_time_tracked: Optional[str] = Field(None, alias="totalTimeTracked")
+    total_time_attendance: Optional[str] = Field(None, alias="totalTimeAttendance")
+    setup_rating: Optional[str] = Field(None, alias="setupRating")
+    rk_polyline: Optional[str] = Field(None, alias="rkPolyline")
+    compliance_rating: Optional[str] = Field(None, alias="complianceRating")
+    distance: float
+    odo_distance: float = Field(..., alias="odoDistance")
+    total_travel_time: Optional[str] = Field(None, alias="totalTravelTime")
+    admin_assigned_tasks: int = Field(..., alias="adminAssignedTasks")
+    admin_completed_tasks: int = Field(..., alias="adminCompletedTasks")
+    self_assigned_tasks: int = Field(..., alias="selfAssignedTasks")
+    self_completed_tasks: int = Field(..., alias="selfCompletedTasks")
+    total_time_spent_with_client: Optional[str] = Field(None, alias="totalTimeSpentWithClient")
+    total_actual_time_spent_with_client: Optional[str] = Field(None, alias="totalActualTimeSpentWithClient")
+    num_breaks: int = Field(..., alias="numBreaks")
+    total_break_time: Optional[str] = Field(None, alias="totalBreakTime")
+    max_break_time: Optional[str] = Field(None, alias="maxBreakTime")
+    total_forms: int = Field(..., alias="totalForms")
+    total_unproductive_time: Optional[str] = Field(None, alias="totalUnproductiveTime")
+    clients_created: int = Field(..., alias="clientsCreated")
+
+    class Config:
+        populate_by_name = True
+        extra = "ignore"
+
+
+class AttendanceShift(BaseModel):
+    start: str
+    startMSE: int
+    end: str
+    endMSE: int
+    duration: str
+    durationMS: int
+
+
+class AttendanceEvent(BaseModel):
+    id: str
+    employee_id: int = Field(..., alias="employeeID")
+    event_type_id: int = Field(..., alias="eventTypeID")
+    lat: float
+    lon: float
+    accuracy: float
+    timestamp: str
+    insert_time: str = Field(..., alias="insertTime")
+    better: int
+    speed: float
+    bearing: float
+    age: int
+    src: int
+    date: Optional[str] = None
+    site_id: Optional[int] = Field(None, alias="siteID")
+    site_name: Optional[str] = Field(None, alias="siteName")
+    photo_url: Optional[str] = Field(None, alias="photoURL")
+    form_url: Optional[str] = Field(None, alias="formURL")
+    processing_date: str = Field(..., alias="processingDate")
+    address: Optional[str] = None
+    tz: str
+    elapsed_real_time: int = Field(..., alias="elapsedRealTime")
+    elapsed_real_time_age: int = Field(..., alias="elapsedRealTimeAge")
+    client_name: Optional[str] = Field(None, alias="clientName")
+
+
+class UnoloAttendanceResponse(BaseModel):
+    first_name: str = Field(..., alias="firstName")
+    last_name: str = Field(..., alias="lastName")
+    internal_emp_id: Optional[str] = Field(None, alias="internalEmpID")
+    manager_name: Optional[str] = Field(None, alias="managerName")
+    parent_admin_id: int = Field(..., alias="parentAdminID")
+    mobile_number: Optional[str] = Field(None, alias="mobileNumber")
+    user_id: str = Field(..., alias="userID")
+    profile_id: int = Field(..., alias="profileID")
+    team_name: Optional[str] = Field(None, alias="teamName")
+    active: int
+    tz: str
+    total_days: int = Field(..., alias="totalDays")
+    total_days_present: int = Field(..., alias="totalDaysPresent")
+    total_days_absent: int = Field(..., alias="totalDaysAbsent")
+    total_days_penalty: int = Field(..., alias="totalDaysPenalty")
+    total_weekly_off: int = Field(..., alias="totalWeeklyOff")
+    total_holidays: int = Field(..., alias="totalHolidays")
+    total_days_on_leave: int = Field(..., alias="totalDaysOnLeave")
+    total_pending_approval: int = Field(..., alias="totalPendingApproval")
+    leave_type: Optional[str] = Field(None, alias="leaveType")
+    leave_session: Optional[str] = Field(None, alias="leaveSession")
+    joining_date: Optional[str] = Field(None, alias="joiningDate")
+    date: str
+    shifts: List[AttendanceShift] = []
+    stretched_shifts: List[AttendanceShift] = Field(default=[], alias="stretchedShifts")
+    # Using Dict for dynamic keys like "8", "9"
+    attendance_events: Dict[str, List[AttendanceEvent]] = Field(default={}, alias="attendanceEvents")
+    
+    first_sign_in: Optional[str] = Field(None, alias="firstSignIn")
+    last_sign_out: Optional[str] = Field(None, alias="lastSignOut")
+    attendance_in_selfies: List[Any] = Field(default=[], alias="attendanceInSelfies")
+    attendance_out_selfies: List[Any] = Field(default=[], alias="attendanceOutSelfies")
+    
+    first_sign_in_mse: Optional[int] = Field(None, alias="firstSignInMSE")
+    last_sign_out_mse: Optional[int] = Field(None, alias="lastSignOutMSE")
+    attendance_hours: float = Field(..., alias="attendanceHours")
+    odo_distance: float = Field(..., alias="odoDistance")
+    total_time_tracked_mse: int = Field(..., alias="totalTimeTrackedMSE")
+    total_time_tracked: str = Field(..., alias="totalTimeTracked")
+    total_time_attendance: str = Field(..., alias="totalTimeAttendance")
+    total_time_attendance_mse: int = Field(..., alias="totalTimeAttendanceMSE")
+    override: Optional[Any] = None
+    attendance_result_code: int = Field(..., alias="attendanceResultCode")
+    attendance_result_code_2: Optional[int] = Field(None, alias="attendanceResultCode2")
+    attendance_reason: Optional[str] = Field(None, alias="attendanceReason")
+    hours_on_duty: float = Field(..., alias="hoursOnDuty")
+    attendance_counted: int = Field(..., alias="attendanceCounted")
+
+    class Config:
+        populate_by_name = True
+        extra = "ignore"
+
+
+class SyncStatsResponse(BaseModel):
+    total_fetched: int
+    created: int
+    updated: int
+    errors: int
+
+
+class EodSummaryList(BaseModel):
+    data: List[UnoloEodSummaryResponse]
+    total: int
+    limit: int
+    skip: int
+
+
+class AttendanceList(BaseModel):
+    data: List[UnoloAttendanceResponse]
+    total: int
+    limit: int
+    skip: int

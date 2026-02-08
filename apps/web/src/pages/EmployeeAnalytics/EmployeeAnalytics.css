@@ -1,0 +1,84 @@
+/* Employee Analytics Styles */
+
+.emp-analytics-container {
+    padding: var(--mantine-spacing-lg);
+}
+
+.filters-section {
+    margin-bottom: var(--mantine-spacing-xl);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--mantine-spacing-md);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--mantine-spacing-md);
+    margin-bottom: var(--mantine-spacing-xl);
+}
+
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--mantine-spacing-xl);
+    margin-bottom: var(--mantine-spacing-xl);
+}
+
+.chart-card {
+    background: var(--mantine-color-body);
+    border: 1px solid var(--mantine-color-gray-3);
+    border-radius: var(--mantine-radius-md);
+    padding: var(--mantine-spacing-lg);
+    box-shadow: var(--mantine-shadow-xs);
+    height: 400px;
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-header {
+    margin-bottom: var(--mantine-spacing-md);
+}
+
+.chart-title {
+    font-size: var(--mantine-font-size-lg);
+    font-weight: 600;
+    color: var(--mantine-color-text);
+}
+
+.chart-subtitle {
+    font-size: var(--mantine-font-size-sm);
+    color: var(--mantine-color-dimmed);
+}
+
+.breakdown-section {
+    background: var(--mantine-color-body);
+    border: 1px solid var(--mantine-color-gray-3);
+    border-radius: var(--mantine-radius-md);
+    padding: var(--mantine-spacing-lg);
+    box-shadow: var(--mantine-shadow-xs);
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .filters-section {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

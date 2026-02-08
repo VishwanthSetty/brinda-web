@@ -27,6 +27,8 @@ import EmployeeList from './pages/Employees/EmployeeList'
 import EmployeeRoutes from './pages/Employees/EmployeeRoutes'
 import EmployeeClients from './pages/Employees/EmployeeClients'
 import EmployeeTasks from './pages/Employees/EmployeeTasks'
+import EmployeeAnalytics from './pages/EmployeeAnalytics'
+import AllEmployeesOverview from './pages/AllEmployeesOverview'
 
 function App() {
     return (
@@ -60,6 +62,8 @@ function App() {
                 <Route path="/dashboard/clients/schools" element={<SchoolsDashboard />} />
                 <Route path="/dashboard/clients/distributor" element={<Distributor />} />
                 <Route path="/dashboard/tasks" element={<TaskAnalytics />} />
+                <Route path="/dashboard/analytics" element={<EmployeeAnalytics />} />
+                <Route path="/dashboard/all-employees" element={<AllEmployeesOverview />} />
 
                 {/* Employee Routes */}
                 <Route path="/dashboard/employee-statistics" element={<EmployeeStatistics />} />

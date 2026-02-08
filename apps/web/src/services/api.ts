@@ -15,7 +15,8 @@ import type {
 import type {
     TaskAnalyticsResponse,
     AreaWiseTasksResponse,
-    SchoolCategoryResponse
+    SchoolCategoryResponse,
+    AdminOverviewResponse
 } from '../types/analytics'
 
 const API_BASE = '/api'
@@ -187,7 +188,7 @@ export const clientsApi = {
             created_count: number
             updated_count: number
             errors: string[]
-        }>('/clients/sync', {
+        }>('/sync/clients', {
             method: 'POST',
         })
 }
@@ -202,7 +203,7 @@ export const employeesApi = {
             created: number
             updated: number
             errors: number
-        }>('/employees/sync', {
+        }>('/sync/employees', {
             method: 'POST',
         }),
 
@@ -225,7 +226,7 @@ export const tasksApi = {
             created: number
             updated: number
             errors: number
-        }>(`/tasks/sync?${searchParams}`, { method: 'POST' })
+        }>(`/sync/tasks?${searchParams}`, { method: 'POST' })
     },
 
     list: (filters: Record<string, any> = {}) => {
@@ -241,6 +242,72 @@ export const tasksApi = {
             limit: number
             skip: number
         }>(`/tasks/?${searchParams}`)
+    },
+}
+
+/**
+ * EOD Summary API
+ */
+export const eodSummaryApi = {
+    sync: (params: { start: string; end: string }) => {
+        const searchParams = new URLSearchParams({
+            start: params.start,
+            end: params.end,
+        })
+        return request<{
+            total_fetched: number
+            created: number
+            updated: number
+            errors: number
+        }>(`/sync/eod-summary?${searchParams}`, { method: 'POST' })
+    },
+
+    list: (filters: Record<string, any> = {}) => {
+        const searchParams = new URLSearchParams()
+        Object.entries(filters).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+                searchParams.set(key, String(value))
+            }
+        })
+        return request<{
+            data: any[]
+            total: number
+            limit: number
+            skip: number
+        }>(`/eod-summary/?${searchParams}`)
+    },
+}
+
+/**
+ * Attendance API
+ */
+export const attendanceApi = {
+    sync: (params: { start: string; end: string }) => {
+        const searchParams = new URLSearchParams({
+            start: params.start,
+            end: params.end,
+        })
+        return request<{
+            total_fetched: number
+            created: number
+            updated: number
+            errors: number
+        }>(`/sync/attendance?${searchParams}`, { method: 'POST' })
+    },
+
+    list: (filters: Record<string, any> = {}) => {
+        const searchParams = new URLSearchParams()
+        Object.entries(filters).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+                searchParams.set(key, String(value))
+            }
+        })
+        return request<{
+            data: any[]
+            total: number
+            limit: number
+            skip: number
+        }>(`/attendance/?${searchParams}`)
     },
 }
 
@@ -285,6 +352,18 @@ export const analyticsApi = {
         if (clientCategory) query.set('client_category', clientCategory)
         if (employeeId) query.set('employee_id', employeeId)
         return request<SchoolCategoryResponse>(`/analytics/tasks/school-category?${query}`)
+    },
+
+    getAdminOverview: (start: string, end: string) => {
+        const query = new URLSearchParams({ start, end })
+        return request<AdminOverviewResponse>(`/analytics/admin/overview?${query}`)
+    },
+
+    getAdminTasks: (start: string, end: string, employeeId?: string, filterType?: string) => {
+        const query = new URLSearchParams({ start, end })
+        if (employeeId) query.set('employee_id', employeeId)
+        if (filterType) query.set('filter_type', filterType)
+        return request<TaskAnalyticsResponse>(`/analytics/admin/tasks?${query}`)
     }
 }
 
@@ -317,3 +396,26 @@ export const contactApi = {
  */
 export const submitContactForm = contactApi.submit;
 
+// Duplicate removed
+
+/**
+ * Employee Analytics API
+ */
+export const empAnalyticsApi = {
+    getDashboard: (start: string, end: string, employeeId?: string | null) => {
+        const query = new URLSearchParams({ start, end })
+        if (employeeId) query.set('employee_id', employeeId)
+        return request<any>(`/emp-analytics/dashboard?${query}`)
+    }
+}
+
+export const allEmpAnalyticsApi = {
+    getOverview: (start: string, end: string) => {
+        const query = new URLSearchParams({ start, end })
+        return request<any>(`/all-emp-analytics/overview?${query}`)
+    }
+}
+
+export const syncApi = {
+    triggerSync: () => request<any>('/sync', { method: 'POST' }),
+}
