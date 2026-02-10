@@ -11,7 +11,8 @@ from fastapi import APIRouter, Header, HTTPException, status, Request
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.database import get_database
-from app.schemas.unolo import UnoloClientResponse
+from app.database import get_database
+from app.schemas.unolo import UnoloClientResponse, UnoloTaskWebhook
 from app.config import get_settings
 from pydantic import ValidationError
 
@@ -138,6 +139,83 @@ async def process_client_webhook_data(client_data: Dict[str, Any], db) -> Dict[s
         return {"success": True, "action": "created", "client_id": unolo_id}
 
 
+async def process_task_webhook_data(task_data: Dict[str, Any], db) -> Dict[str, Any]:
+    """
+    Process a single task webhook payload and create/update task in database.
+    """
+    collection = db["tasks"]
+    now = datetime.now(timezone.utc)
+    
+    try:
+        # Validate using schema
+        item = UnoloTaskWebhook.model_validate(task_data)
+    except ValidationError as e:
+        logger.error(f"Validation error for task webhook: {e}")
+        return {"success": False, "error": f"Validation error: {str(e)}"}
+        
+    task_id = item.task_id
+    
+    # Convert string dates/times to objects if necessary
+    # The schema defines them as strings/float, but we might want datetime objects in DB
+    # matching the internal TaskInDB model.
+    # For now, let's keep them as provided or convert if strict formats are known.
+    # The TaskInDB model expects datetime for checkinTime/checkoutTime but Unolo sends strings?
+    # Usually Unolo sends ISO strings. Let's try to parse them if possible or store as is
+    # if the database allows flexible schema. 
+    # However, app.schemas.task.TaskBase defines checkinTime as Optional[datetime].
+    # So we should convert.
+    
+    def parse_dt(dt_str):
+        if not dt_str: return None
+        try:
+            return datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+        except ValueError:
+            return None # Or keep as string?
+            
+    # Prepare document from validated item
+    # We want to use the structure from TaskBase/TaskInDB as much as possible
+    
+    task_doc = item.model_dump(by_alias=True, exclude_unset=False)
+    
+    # Fix dates
+    if item.checkin_time:
+        # If it's a string, try to parse
+        if isinstance(item.checkin_time, str):
+            task_doc["checkinTime"] = parse_dt(item.checkin_time) or item.checkin_time
+            
+    if item.checkout_time:
+        if isinstance(item.checkout_time, str):
+            task_doc["checkoutTime"] = parse_dt(item.checkout_time) or item.checkout_time
+
+    # Ensure date is stored as needed, usually string YYYY-MM-DD is fine for "date" field
+    
+    # Add local timestamps
+    task_doc["updated_at_local"] = now
+    
+    existing = await collection.find_one({"taskID": task_id})
+    
+    if existing:
+        # UPDATE
+        await collection.update_one(
+            {"taskID": task_id},
+            {"$set": task_doc}
+        )
+        logger.info(f"Webhook: Updated task {task_id}")
+        return {"success": True, "action": "updated", "task_id": task_id}
+    else:
+        # INSERT
+        task_doc["created_at_local"] = now
+        # If _id is not provided, Mongo will generate one.
+        # But if we want taskID to be the _id, we could set it.
+        # exact model `TaskInDB` uses `id: str = Field(..., alias="_id")`
+        # but in MongoMeta it sets unique index on `taskID`.
+        # So we'll rely on Mongo's _id and keep taskID as a field.
+        
+        await collection.insert_one(task_doc)
+        logger.info(f"Webhook: Created task {task_id}")
+        return {"success": True, "action": "created", "task_id": task_id}
+
+
 @router.post("/clients")
 async def receive_client_webhook(
     request: Request,
@@ -192,4 +270,41 @@ async def receive_client_webhook(
         "action": result.get("action"),
         "client_id": result.get("client_id"),
         "message": f"Client {result.get('action')} successfully"
+    }
+
+
+@router.post("/tasks")
+async def receive_task_webhook(
+    request: Request,
+    x_webhook_secret: Optional[str] = Header(None, alias="X-Webhook-Secret"),
+):
+    """
+    Receive webhook from Unolo when a task is created or edited.
+    """
+    # Verify webhook secret
+    await verify_webhook_secret(x_webhook_secret)
+    
+    # Parse body
+    try:
+        payload = await request.json()
+    except Exception as e:
+        logger.error(f"Failed to parse task webhook JSON: {e}")
+        raise HTTPException(status_code=400, detail="Invalid JSON")
+        
+    logger.info(f"Received task webhook: {payload}")
+    
+    db = await get_database()
+    result = await process_task_webhook_data(payload, db)
+    
+    if not result["success"]:
+        raise HTTPException(
+            status_code=422,
+            detail=result.get("error", "Failed to process task webhook")
+        )
+        
+    return {
+        "status": "success",
+        "action": result.get("action"),
+        "task_id": result.get("task_id"),
+        "message": f"Task {result.get('action')} successfully"
     }

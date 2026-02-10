@@ -226,3 +226,42 @@ class AttendanceList(BaseModel):
     total: int
     limit: int
     skip: int
+
+
+class UnoloTaskWebhook(BaseModel):
+    """Schema for Task Webhook payload from Unolo."""
+    task_id: str = Field(..., alias="taskID")
+    client_id: Optional[str] = Field(None, alias="clientID")
+    employee_id: Optional[str] = Field(None, alias="employeeID")
+    internal_emp_id: Optional[str] = Field(None, alias="internalEmpID")
+    date: str = Field(..., description="Date string YYYY-MM-DD")
+    
+    checkin_time: Optional[str] = Field(None, alias="checkinTime")
+    checkout_time: Optional[str] = Field(None, alias="checkoutTime")
+    
+    task_description: Optional[str] = Field(None, alias="taskDescription")
+    
+    # Location data
+    address: Optional[str] = None
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    
+    # Custom fields
+    custom_entity: Optional[Dict[str, Any]] = Field(None, alias="customEntity")
+    custom_fields_complex: List[Dict[str, Any]] = Field(default=[], alias="customFieldsComplex")
+    
+    # Audit / metadata
+    created_by: Optional[str] = Field(None, alias="createdBy")
+    created_by_name: Optional[str] = Field(None, alias="createdByName")
+    last_modified_by: Optional[str] = Field(None, alias="lastModifiedBy")
+    last_modified_by_name: Optional[str] = Field(None, alias="lastModifiedByName")
+    
+    metadata: Optional[Dict[str, Any]] = None
+    
+    # Status
+    task_status: Optional[str] = Field(None, alias="taskStatus")
+    
+    class Config:
+        populate_by_name = True
+        extra = "ignore"
+
