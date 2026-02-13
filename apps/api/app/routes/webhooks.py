@@ -37,6 +37,41 @@ async def verify_webhook_secret(x_webhook_secret: Optional[str] = Header(None, a
     return True
 
 
+def parse_dt(dt_val):
+    """
+    Parse datetime value and return ISO formatted string.
+    Target format: 2026-02-02T17:29:38.507+00:00
+    """
+    if dt_val is None: return None
+    
+    dt_obj = None
+    
+    if isinstance(dt_val, (int, float)):
+        try:
+            ts = float(dt_val)
+            # Heuristic for ms vs seconds
+            if ts > 1e11:
+                ts /= 1000.0
+            dt_obj = datetime.fromtimestamp(ts, timezone.utc)
+        except Exception:
+            return None
+    
+    elif isinstance(dt_val, str):
+        try:
+            # Replace Z with +00:00 for consistency if needed
+            dt_obj = datetime.fromisoformat(dt_val.replace('Z', '+00:00'))
+        except ValueError:
+            return dt_val # Return strict string if parse fails?
+            
+    elif isinstance(dt_val, datetime):
+        dt_obj = dt_val
+        
+    if dt_obj:
+        return dt_obj.isoformat(timespec='milliseconds')
+        
+    return None
+
+
 async def process_client_webhook_data(client_data: Dict[str, Any], db) -> Dict[str, Any]:
     """
     Process a single client webhook payload and create/update client in database.
@@ -68,13 +103,18 @@ async def process_client_webhook_data(client_data: Dict[str, Any], db) -> Dict[s
             if c_number == "N/A":
                 c_number = parts[1]
     
-    # Construct client document
-    client_doc = {
+    # Format timestamps
+    # The original code constructed a specific dict mapping. 
+    # Let's preserve that mapping but ensure values are formatted.
+    
+    # We need to use values from 'item' which now has strings for IDs.
+    
+    client_db_doc = {
         "Client Name (*)": item.client_name,
         "Address (*)": item.address,
         "Latitude": item.lat,
         "Longitude": item.lng,
-        "unolo_client_id": unolo_id,
+        "unolo_client_id": str(unolo_id),
         
         "Contact Name (*)": c_name,
         "Contact Number (*)": c_number,
@@ -98,17 +138,27 @@ async def process_client_webhook_data(client_data: Dict[str, Any], db) -> Dict[s
         "Email": item.email,
         "City": item.city,
         "Pincode": item.pin_code or item.pincode,
+        
+        # Add formatted timestamps if available in item
+        # The schema has timestamp, created_ts, last_modified_ts
+        # We should map them?
+        "unolo_timestamp": parse_dt(item.timestamp),
+        "unolo_created_ts": parse_dt(item.created_ts),
+        "unolo_last_modified_ts": parse_dt(item.last_modified_ts),
     }
     
-    existing = await collection.find_one({"unolo_client_id": unolo_id})
+    # Clean up none values? Original code did:
+    # update_fields = {k: v for k, v in client_doc.items() if v is not None}
+    
+    existing = await collection.find_one({"unolo_client_id": str(unolo_id)})
     
     if existing:
         # UPDATE
-        update_fields = {k: v for k, v in client_doc.items() if v is not None}
+        update_fields = {k: v for k, v in client_db_doc.items() if v is not None}
         update_fields["Last Modified At"] = now
         
         await collection.update_one(
-            {"unolo_client_id": unolo_id},
+            {"unolo_client_id": str(unolo_id)},
             {"$set": update_fields}
         )
         logger.info(f"Webhook: Updated client {unolo_id}")
@@ -130,7 +180,10 @@ async def process_client_webhook_data(client_data: Dict[str, Any], db) -> Dict[s
             "Country Code (*)": "+91"
         }
         
-        insert_doc = {**required_defaults, **client_doc}
+        insert_doc = {**required_defaults, **client_db_doc}
+        # Remove None values
+        insert_doc = {k: v for k, v in insert_doc.items() if v is not None}
+        
         insert_doc["Created At"] = now
         insert_doc["Last Modified At"] = now
         
@@ -164,29 +217,34 @@ async def process_task_webhook_data(task_data: Dict[str, Any], db) -> Dict[str, 
     # if the database allows flexible schema. 
     # However, app.schemas.task.TaskBase defines checkinTime as Optional[datetime].
     # So we should convert.
-    
-    def parse_dt(dt_str):
-        if not dt_str: return None
-        try:
-            return datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
-        except ValueError:
-            return None # Or keep as string?
             
     # Prepare document from validated item
     # We want to use the structure from TaskBase/TaskInDB as much as possible
     
     task_doc = item.model_dump(by_alias=True, exclude_unset=False)
     
+    # Explicitly convert IDs to strings
+    if "employeeID" in task_doc and task_doc["employeeID"] is not None:
+        task_doc["employeeID"] = str(task_doc["employeeID"])
+    if "internalEmpID" in task_doc and task_doc["internalEmpID"] is not None:
+        task_doc["internalEmpID"] = str(task_doc["internalEmpID"])
+    
     # Fix dates
-    if item.checkin_time:
-        # If it's a string, try to parse
-        if isinstance(item.checkin_time, str):
-            task_doc["checkinTime"] = parse_dt(item.checkin_time) or item.checkin_time
+    if item.checkin_time is not None:
+        task_doc["checkinTime"] = parse_dt(item.checkin_time)
             
-    if item.checkout_time:
-        if isinstance(item.checkout_time, str):
-            task_doc["checkoutTime"] = parse_dt(item.checkout_time) or item.checkout_time
-
+    if item.checkout_time is not None:
+        task_doc["checkoutTime"] = parse_dt(item.checkout_time)
+            
+    # Convert createdTs / lastModifiedTs if they exist in schema and payload?
+    # Task schema doesn't strictly define them as int/str/float union in Base, 
+    # but likely unolo sends them as int.
+    # UnoloTaskWebhook (in unolo.py) has no created_ts etc fields defined locally, checks TaskBase?
+    # TaskBase: created_by, created_by_name... doesn't have timestamps from Unolo except usually in metadata?
+    # Wait, the user payload had "createdTs": 1770957322716.
+    # UnoloTaskWebhook should probably accept those if we want to store them.
+    # But for now I'll just focus on what's defined.
+    
     # Ensure date is stored as needed, usually string YYYY-MM-DD is fine for "date" field
     
     # Add local timestamps
@@ -223,12 +281,13 @@ async def receive_client_webhook(
 ):
     """
     Receive webhook from Unolo when a client is created or edited.
+    Supports both single object and list of objects.
     
     Expected Headers:
         - X-Webhook-Secret: Your configured webhook secret for authentication
     
     Expected Body:
-        - JSON payload with client data from Unolo
+        - JSON payload with client data from Unolo (single dict or list of dicts)
     """
     # Verify webhook secret if configured
     settings = get_settings()
@@ -251,25 +310,43 @@ async def receive_client_webhook(
             detail="Invalid JSON payload"
         )
     
-    logger.info(f"Received client webhook: {payload}")
+    logger.info(f"Received client webhook with type: {type(payload)}")
     
     # Get database connection
     db = await get_database()
     
-    # Process the client data
-    result = await process_client_webhook_data(payload, db)
+    results = []
     
-    if not result["success"]:
+    # Handle list of clients
+    if isinstance(payload, list):
+        for item in payload:
+            res = await process_client_webhook_data(item, db)
+            results.append(res)
+    elif isinstance(payload, dict):
+        # Handle single client
+        res = await process_client_webhook_data(payload, db)
+        results.append(res)
+    else:
+        logger.error(f"Invalid payload type: {type(payload)}")
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=result.get("error", "Failed to process client webhook")
+            detail="Invalid payload format. Expected list or dict."
         )
+    
+    # Check for failures
+    failures = [r for r in results if not r["success"]]
+    successes = [r for r in results if r["success"]]
+    
+    if failures:
+        logger.warning(f"Client webhook processed with {len(failures)} errors out of {len(results)} items.")
+        pass # Return success if at least some processed or to avoid indefinite retries of bad data
     
     return {
         "status": "success",
-        "action": result.get("action"),
-        "client_id": result.get("client_id"),
-        "message": f"Client {result.get('action')} successfully"
+        "processed": len(results),
+        "success_count": len(successes),
+        "failure_count": len(failures),
+        "details": results
     }
 
 
@@ -280,6 +357,7 @@ async def receive_task_webhook(
 ):
     """
     Receive webhook from Unolo when a task is created or edited.
+    Supports both single object and list of objects.
     """
     # Verify webhook secret
     await verify_webhook_secret(x_webhook_secret)
@@ -291,20 +369,49 @@ async def receive_task_webhook(
         logger.error(f"Failed to parse task webhook JSON: {e}")
         raise HTTPException(status_code=400, detail="Invalid JSON")
         
-    logger.info(f"Received task webhook: {payload}")
+    logger.info(f"Received task webhook with type: {type(payload)}")
     
     db = await get_database()
-    result = await process_task_webhook_data(payload, db)
     
-    if not result["success"]:
-        raise HTTPException(
-            status_code=422,
-            detail=result.get("error", "Failed to process task webhook")
-        )
-        
+    results = []
+    
+    # Handle list of tasks
+    if isinstance(payload, list):
+        for item in payload:
+            res = await process_task_webhook_data(item, db)
+            results.append(res)
+    elif isinstance(payload, dict):
+        # Handle single task
+        res = await process_task_webhook_data(payload, db)
+        results.append(res)
+    else:
+        logger.error(f"Invalid payload type: {type(payload)}")
+        raise HTTPException(status_code=422, detail="Invalid payload format. Expected list or dict.")
+    
+    # Check for failures
+    failures = [r for r in results if not r["success"]]
+    successes = [r for r in results if r["success"]]
+    
+    if failures:
+        logger.warning(f"Task webhook processed with {len(failures)} errors out of {len(results)} items.")
+        # If all failed, return error? Or partial success?
+        # Typically webhooks equate 200 OK with "received". 
+        # But if we want Unolo to retry, we should return non-200.
+        # Use simple logic: if ANY failed, return 422? Or only if ALL failed?
+        # Let's log errors but return success if at least one worked? 
+        # Or return 422 to force retry?
+        # Unolo might retry the whole batch. 
+        # If we return 422, it might retry identical payload.
+        # Safest is to return 200 if we processed at least one, or if it's a data validation error we can't fix.
+        # But if it's a transient error, we want retry.
+        # Given the "validation error" nature, retrying won't fix it unless code changes.
+        # So return 200 to acknowledge receipt and log errors effectively.
+        pass
+
     return {
         "status": "success",
-        "action": result.get("action"),
-        "task_id": result.get("task_id"),
-        "message": f"Task {result.get('action')} successfully"
+        "processed": len(results),
+        "success_count": len(successes),
+        "failure_count": len(failures),
+        "details": results
     }

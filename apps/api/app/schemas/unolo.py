@@ -6,47 +6,47 @@ class UnoloVisibility(BaseModel):
     value: int
 
 class UnoloClientResponse(BaseModel):
-    client_id: Optional[str] = Field(None, validation_alias="clientID")
+    client_id: Optional[Union[str, int]] = Field(None, validation_alias="clientID")
     # Support both capitalizations just in case, though the first one is from the first payload
     # The second payload had "clientId", but "clientID" was in the first big blob.
     # Pydantic's validation_alias can take a list or we can just rely on the primary one
     # provided in the real data. I'll stick to the first blob's conventions for now 
     # and add the user's second blob fields.
     
-    company_id: Optional[int] = Field(None, alias="companyID")
+    company_id: Optional[Union[str, int]] = Field(None, alias="companyID")
     client_name: Optional[str] = Field(None, alias="clientName")
     lat: Optional[float] = Field(None)
     lng: Optional[float] = Field(None)
     description: Optional[str] = Field(None)
-    timestamp: Optional[int] = Field(None)
-    phone_number: Optional[str] = Field(None, alias="phoneNumber")
+    timestamp: Optional[Union[str, int, float]] = Field(None)
+    phone_number: Optional[Union[str, int]] = Field(None, alias="phoneNumber")
     address: Optional[str] = Field(None)
     proprietor_name: Optional[str] = Field(None, alias="proprietorName")
     photo_path: Optional[str] = Field(None, alias="photoPath")
-    radius: Optional[int] = Field(None)
+    radius: Optional[Union[str, int]] = Field(None)
     can_override: Optional[Union[int, bool]] = Field(None, alias="canOverride")
     orig_lat: Optional[float] = Field(None, alias="origLat")
     orig_lon: Optional[float] = Field(None, alias="origLon")
     email: Optional[str] = Field(None)
-    internal_client_id: Optional[str] = Field(None, alias="internalClientID")
+    internal_client_id: Optional[Union[str, int]] = Field(None, alias="internalClientID")
     city: Optional[str] = Field(None)
     pin_code: Optional[Union[str, int]] = Field(None, alias="pinCode")
     pincode: Optional[Union[str, int]] = Field(None) # From second request
     
     polyline: Optional[Any] = Field(None)
-    site_type: Optional[int] = Field(None, alias="siteType")
-    job_type_id: Optional[int] = Field(None, alias="jobTypeID")
+    site_type: Optional[Union[str, int]] = Field(None, alias="siteType")
+    job_type_id: Optional[Union[str, int]] = Field(None, alias="jobTypeID")
     client_cat: Optional[Any] = Field(None, alias="clientCat")
     
     # Tracking fields
-    created_by_admin_id: Optional[int] = Field(None, alias="createdByAdminID")
-    created_by_emp_id: Optional[int] = Field(None, alias="createdByEmpID")
-    created_by_source_id: Optional[int] = Field(None, alias="createdBySourceID")
-    created_ts: Optional[int] = Field(None, alias="createdTs")
-    last_modified_by_emp_id: Optional[int] = Field(None, alias="lastModifiedByEmpID")
-    last_modified_by_admin_id: Optional[int] = Field(None, alias="lastModifiedByAdminID")
-    last_modified_by_source_id: Optional[int] = Field(None, alias="lastModifiedBySourceID")
-    last_modified_ts: Optional[int] = Field(None, alias="lastModifiedTs")
+    created_by_admin_id: Optional[Union[str, int]] = Field(None, alias="createdByAdminID")
+    created_by_emp_id: Optional[Union[str, int]] = Field(None, alias="createdByEmpID")
+    created_by_source_id: Optional[Union[str, int]] = Field(None, alias="createdBySourceID")
+    created_ts: Optional[Union[str, int, float]] = Field(None, alias="createdTs")
+    last_modified_by_emp_id: Optional[Union[str, int]] = Field(None, alias="lastModifiedByEmpID")
+    last_modified_by_admin_id: Optional[Union[str, int]] = Field(None, alias="lastModifiedByAdminID")
+    last_modified_by_source_id: Optional[Union[str, int]] = Field(None, alias="lastModifiedBySourceID")
+    last_modified_ts: Optional[Union[str, int, float]] = Field(None, alias="lastModifiedTs")
     
     otp_verified: Optional[Union[int, bool]] = Field(None, alias="otpVerified")
     is_duplicate: Optional[bool] = Field(None, alias="isDuplicate")
@@ -73,6 +73,17 @@ class UnoloClientResponse(BaseModel):
     contact_name: Optional[str] = Field(None, alias="contactName")
     contact_number: Optional[str] = Field(None, alias="contactNumber")
     country_code: Optional[str] = Field(None, alias="countryCode")
+    
+    @field_validator(
+        'client_id', 'company_id', 'internal_client_id', 
+        'created_by_admin_id', 'created_by_emp_id', 'created_by_source_id',
+        'last_modified_by_emp_id', 'last_modified_by_admin_id', 'last_modified_by_source_id',
+        mode='before'
+    )
+    def stringify_ids(cls, v):
+        if v is None:
+            return None
+        return str(v)
 
     class Config:
         populate_by_name = True
@@ -236,8 +247,8 @@ class UnoloTaskWebhook(BaseModel):
     internal_emp_id: Optional[str] = Field(None, alias="internalEmpID")
     date: str = Field(..., description="Date string YYYY-MM-DD")
     
-    checkin_time: Optional[str] = Field(None, alias="checkinTime")
-    checkout_time: Optional[str] = Field(None, alias="checkoutTime")
+    checkin_time: Optional[Union[str, int, float]] = Field(None, alias="checkinTime")
+    checkout_time: Optional[Union[str, int, float]] = Field(None, alias="checkoutTime")
     
     task_description: Optional[str] = Field(None, alias="taskDescription")
     
@@ -260,6 +271,12 @@ class UnoloTaskWebhook(BaseModel):
     
     # Status
     task_status: Optional[str] = Field(None, alias="taskStatus")
+    
+    @field_validator('employee_id', 'internal_emp_id', mode='before')
+    def stringify_ids(cls, v):
+        if v is None:
+            return None
+        return str(v)
     
     class Config:
         populate_by_name = True

@@ -15,8 +15,8 @@ class TaskBase(BaseModel):
     employee_id: Optional[str] = Field(None, alias="employeeID")
     internal_emp_id: str = Field(..., alias="internalEmpID")
     task_date: date = Field(..., alias="date")
-    checkin_time: Optional[datetime] = Field(None, alias="checkinTime")
-    checkout_time: Optional[datetime] = Field(None, alias="checkoutTime")
+    checkin_time: Optional[Union[datetime, str]] = Field(None, alias="checkinTime")
+    checkout_time: Optional[Union[datetime, str]] = Field(None, alias="checkoutTime")
     lat: Optional[float] = None
     lon: Optional[float] = None
     task_description: Optional[str] = Field(None, alias="taskDescription")
